@@ -38,6 +38,17 @@ defmodule SeshLab.Editions do
     |> Repo.preload(:ticket_types)
   end
 
+  @doc "Só a cor de accent da edição publicada (query leve, p/ tematizar toda página). `nil` se nenhuma."
+  @spec current_accent() :: String.t() | nil
+  def current_accent do
+    Edition
+    |> where(status: :published)
+    |> order_by(desc: :starts_at)
+    |> limit(1)
+    |> select([e], e.accent_color)
+    |> Repo.one()
+  end
+
   @spec get_ticket_type!(Ecto.UUID.t()) :: TicketType.t()
   def get_ticket_type!(id), do: Repo.get!(TicketType, id)
 

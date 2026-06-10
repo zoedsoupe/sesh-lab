@@ -109,7 +109,7 @@ export async function bindVitrinePrompt() {
   }
 
   const bar = document.createElement("div");
-  bar.className = "alert alert--info push-prompt";
+  bar.className = "alert push-prompt";
 
   const text = document.createElement("span");
   text.className = "text-base";

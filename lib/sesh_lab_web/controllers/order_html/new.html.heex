@@ -1,20 +1,10 @@
 <Layouts.app flash={@flash}>
-  <.form :let={f} for={@changeset} action={~p"/pedido"} class="stack-5" id="order-form">
-    <input :if={@promo} type="hidden" name="promo_id" value={@promo.id} />
+  <.form :let={f} for={@changeset} action={~p"/comprar"} class="stack-5" id="order-form">
     <input type="hidden" name="order[client_endpoint]" data-client-endpoint />
 
     <header class="stack-1">
-      <h1 class="text-xl text-mono">
-        {if @promo, do: "promo: #{@promo.name}", else: "Pedido"}
-      </h1>
-      <p :if={@promo} class="text-xs text-accent text-mono">
-        total fechado: {money(@promo.total_cents)}
-      </p>
-      <p class="text-xs text-dim">
-        {if @promo,
-          do: "quantidades fixas da promo. preencha seus dados abaixo.",
-          else: "Escolha as quantidades e seus dados."}
-      </p>
+      <h1 class="text-xl text-mono">Comprar — {@edition.name}</h1>
+      <p class="text-xs text-dim">Escolha as quantidades e preencha seus dados.</p>
     </header>
 
     <div :if={Phoenix.Flash.get(@flash, :error)} class="alert alert--error" role="alert">
@@ -26,84 +16,46 @@
       class="alert alert--error"
       role="alert"
     >
-      <p class="text-sm">Não foi possível enviar o pedido. Confira os campos destacados.</p>
+      <p class="text-sm">Não foi possível registrar o pedido. Confira os campos destacados.</p>
     </div>
 
     <section class="stack-3">
-      <h2 class="text-sm text-muted">
-        {if @promo, do: "itens da promo", else: "O que você deseja?"}
-      </h2>
+      <h2 class="text-sm text-muted">Ingressos</h2>
 
-      <ul :if={@promo} class="stack-3">
-        <.qty_row products={@products} items={@items} promo={@promo} />
+      <p :if={@lots == []} class="text-sm text-dim">
+        Nenhum lote à venda agora. Fica de olho que abre logo.
+      </p>
+
+      <ul :if={@lots != []} class="stack-3">
+        <.lot_row lots={@lots} items={@items} />
       </ul>
-
-      <% pronta = Enum.reject(@products, & &1.is_preorder) %>
-      <% encomenda = Enum.filter(@products, & &1.is_preorder) %>
-
-      <div :if={is_nil(@promo) and pronta != []} class="stack-2">
-        <h3 class="text-xs text-muted text-mono">pronta entrega</h3>
-        <ul class="stack-3">
-          <.qty_row products={pronta} items={@items} promo={@promo} />
-        </ul>
-      </div>
-
-      <div :if={is_nil(@promo) and encomenda != []} class="stack-2">
-        <h3 class="text-xs text-muted text-mono">encomenda</h3>
-        <ul class="stack-3">
-          <.qty_row products={encomenda} items={@items} promo={@promo} />
-        </ul>
-      </div>
     </section>
 
-    <section class="stack-3">
+    <section :if={@lots != []} class="stack-3">
       <h2 class="text-sm text-muted">Seus dados</h2>
 
       <.input field={f[:customer_name]} label="Nome" required autocomplete="name" />
+
       <.input
         field={f[:customer_instagram]}
         type="text"
-        label="Instagram (@ sem o arroba)"
+        label="Instagram (sem o @)"
         required
         inputmode="text"
         autocomplete="off"
         placeholder="seu.usuario"
       />
       <p class="text-xs text-dim">
-        mesmo se seu perfil for fechado, `@a.sesh.sesh` consegue te mandar mensagem por solicitação.
+        É por aí que a SESH te chama caso precise falar do seu ingresso.
       </p>
 
       <.input
-        field={f[:delivery_type]}
-        type="select"
-        label="Entrega"
-        options={delivery_options()}
-      />
-
-      <.input
-        field={f[:address]}
-        type="textarea"
-        label="Endereço (opcional, se entrega)"
-        rows="2"
-      />
-
-      <.input
-        field={f[:payment_method]}
-        type="select"
-        label="Pagamento"
-        options={payment_options()}
-      />
-
-      <.input
-        :if={is_nil(@promo)}
         field={f[:coupon_code]}
         type="text"
         label="Cupom (opcional)"
         autocomplete="off"
-        placeholder="ex: RAD-7K9Q"
+        placeholder="ex: SESH-7K9Q"
       />
-
-      <.input field={f[:notes]} type="textarea" label="Observações" rows="2" />
 
       <label class="field field--inline">
         <input type="checkbox" id="remember-me" data-remember class="checkbox" />
@@ -111,7 +63,9 @@
       </label>
     </section>
 
-    <.button type="submit" variant={:primary} class="btn--block">Enviar pedido</.button>
+    <.button :if={@lots != []} type="submit" variant={:primary} class="btn--block btn--blob">
+      Ir pro PIX
+    </.button>
 
     <button type="button" class="btn btn--ghost btn--block" data-clear-storage>
       Limpar meus dados deste dispositivo

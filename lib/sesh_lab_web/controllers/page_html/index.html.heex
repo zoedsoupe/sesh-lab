@@ -1,173 +1,68 @@
 <Layouts.app flash={@flash}>
-  <section class="stack-5" data-vitrine-stream>
-    <header class="stack-1">
-      <h1 class="text-xl text-mono">Vitrine</h1>
-    </header>
-
+  <section :if={@edition} class="flyer stack-5">
     <div data-push-prompt></div>
 
-    <div
-      :if={@pronta == [] and @encomenda == [] and @promos == []}
-      class="empty-cta stack-2"
-    >
-      <p class="text-sm text-muted">Sem estoque agora.</p>
-      <a
-        href="https://www.instagram.com/a.sesh.sesh/"
-        target="_blank"
-        rel="noopener"
-        class="btn btn--ghost btn--block"
+    <header class="flyer-head stack-2">
+      <.sesh_logo src={edition_logo(@edition)} class="sesh-logo--hero" />
+      <p class="text-xs text-mono text-dim">{"SESH ##{@edition.number}"}</p>
+      <h1
+        :if={@edition.name not in ["SESH ##{@edition.number}", "SESH #{@edition.number}"]}
+        class="flyer-title"
       >
-        Acompanhe no instagram
-      </a>
+        {@edition.name}
+      </h1>
+      <p class="date-duo">
+        <span class="date-duo-time text-mono">{edition_time(@edition.starts_at)}</span>
+        <span class="date-duo-date text-mono">{edition_day(@edition.starts_at)}</span>
+      </p>
+    </header>
+
+    <section :if={@edition.venue} class="stack-1">
+      <h2 class="text-sm text-muted">Onde</h2>
+      <p class="text-base">{@edition.venue}</p>
+      <p :if={@edition.venue_address} class="text-xs text-dim">{@edition.venue_address}</p>
+    </section>
+
+    <% lineup = lineup_lines(@edition.lineup) %>
+    <section :if={lineup != []} class="stack-1">
+      <h2 class="text-sm text-muted">Lineup</h2>
+      <ul class="lineup stack-1">
+        <li :for={name <- lineup} class="text-base text-mono">{name}</li>
+      </ul>
+    </section>
+
+    <a href={~p"/comprar"} class="btn btn--blob btn--block">garantir ingresso →</a>
+    <a href={~p"/tocar"} class="btn btn--ghost btn--block">quer tocar?</a>
+
+    <div class="stack-1">
+      <p class="text-sm text-muted">
+        Rolê experimental de música eletrônica! Som estranho até as 5h.
+      </p>
+      <a href={~p"/sobre"} class="text-mono text-sm">Sobre o coletivo →</a>
     </div>
+  </section>
 
-    <%!-- PROMOS — destaque no topo --%>
-    <section :if={@promos != []} class="stack-3 promo-section">
-      <h2 class="text-sm text-muted">Promos & Kits</h2>
-      <ul class="stack-2">
-        <li :for={promo <- @promos} class="card promo-card stack-2">
-          <img
-            :if={promo.photo_path}
-            src={SeshLab.Catalog.photo_url(promo.photo_path)}
-            alt={promo.name}
-            loading="lazy"
-            class="product-photo-thumb"
-          />
-          <div class="row space-between align-baseline gap-3">
-            <h3 class="text-base">{promo.name}</h3>
-            <span class="text-mono text-sm">
-              {SeshLabWeb.CoreComponents.money(promo.total_cents)}
-            </span>
-          </div>
-          <p :if={promo.description} class="text-xs text-dim">{promo.description}</p>
-          <ul class="text-xs text-muted stack-1">
-            <li :for={item <- promo.items}>
-              {item.quantity}× {item.product && item.product.name}
-            </li>
-          </ul>
-          <% separate = SeshLab.Promos.separate_total_cents(promo) %>
-          <a href={~p"/pedido?promo=#{promo.id}"} class="btn btn--primary btn--block">
-            Economize {SeshLabWeb.CoreComponents.money(separate - promo.total_cents)} →
-          </a>
-        </li>
-      </ul>
-    </section>
+  <section :if={is_nil(@edition)} class="teaser stack-5">
+    <div data-push-prompt></div>
 
-    <%!-- PRONTA ENTREGA --%>
-    <section :if={@pronta != []} class="stack-3">
-      <h2 class="text-sm text-muted">Pronta entrega</h2>
-      <ul class="product-grid">
-        <li
-          :for={p <- @pronta}
-          class={[
-            "product-card",
-            p.id == "magic" && "product-card--cinnamon",
-            p.stock == 0 && "is-sold-out"
-          ]}
-          data-product-id={p.id}
-          data-unit-label={p.unit_label}
-        >
-          <div class="product-body stack-2">
-            <div class="row space-between align-baseline gap-3">
-              <h3 class="text-base">{p.name}</h3>
-              <span class="text-mono text-sm">
-                {SeshLabWeb.CoreComponents.money(p.unit_price_cents)}
-              </span>
-            </div>
+    <header class="stack-3">
+      <.sesh_logo class="sesh-logo--hero" />
+      <p class="text-base text-dim">Próxima edição em breve.</p>
+    </header>
 
-            <p class="text-xs text-dim">{p.unit_label}</p>
+    <p class="text-sm text-muted">
+      Ativa os avisos pra ser a primeira a saber quando os ingressos abrirem.
+    </p>
 
-            <div class="row space-between align-center">
-              <span
-                :if={p.stock == 0}
-                class="badge badge--expired"
-                data-stock-badge
-                data-stock="0"
-              >
-                esgotado
-              </span>
-              <span
-                :if={p.stock > 0}
-                class="text-xs text-muted"
-                data-stock-badge
-                data-stock={p.stock}
-              >
-                {p.stock} {p.unit_label} {if p.stock == 1, do: "restante", else: "restantes"}
-              </span>
-              <span :if={p.id == "magic"} class="chip chip--cinnamon">por grama</span>
-            </div>
-
-            <details :if={p.description || p.photo_path} class="product-detail">
-              <summary class="text-xs text-dim">ver detalhes</summary>
-              <div class="stack-2 mt-3">
-                <img
-                  :if={p.photo_path}
-                  src={SeshLab.Catalog.photo_url(p.photo_path)}
-                  alt={p.name}
-                  loading="lazy"
-                  class="product-photo-thumb"
-                />
-                <p :if={p.description} class="text-sm text-muted">{p.description}</p>
-              </div>
-            </details>
-          </div>
-        </li>
-      </ul>
-    </section>
-
-    <%!-- ENCOMENDA — sob encomenda, demora --%>
-    <section :if={@encomenda != []} class="stack-3 encomenda-section">
-      <div class="stack-1">
-        <h2 class="text-sm text-muted">Encomenda</h2>
-        <p class="text-xs text-dim">Preparado após o pix cair. Confira o prazo de cada item.</p>
-      </div>
-      <ul class="product-grid">
-        <li
-          :for={p <- @encomenda}
-          class={["product-card", "product-card--encomenda"]}
-        >
-          <div class="product-body stack-2">
-            <div class="row space-between align-baseline gap-3">
-              <h3 class="text-base">{p.name}</h3>
-              <span class="text-mono text-sm">
-                {SeshLabWeb.CoreComponents.money(p.unit_price_cents)}
-              </span>
-            </div>
-
-            <p class="text-xs text-dim">{p.unit_label}</p>
-
-            <div class="row gap-3 align-center">
-              <span :if={p.lead_time_days} class="chip chip--encomenda">
-                ~ {p.lead_time_days} {if p.lead_time_days == 1, do: "dia", else: "dias"}
-              </span>
-              <span class="text-xs text-dim">sob encomenda</span>
-            </div>
-
-            <details :if={p.description || p.photo_path} class="product-detail">
-              <summary class="text-xs text-dim">ver detalhes</summary>
-              <div class="stack-2 mt-3">
-                <img
-                  :if={p.photo_path}
-                  src={SeshLab.Catalog.photo_url(p.photo_path)}
-                  alt={p.name}
-                  loading="lazy"
-                  class="product-photo-thumb"
-                />
-                <p :if={p.description} class="text-sm text-muted">{p.description}</p>
-              </div>
-            </details>
-          </div>
-        </li>
-      </ul>
-    </section>
-
-    <div
-      :if={Enum.any?(@pronta, &(&1.stock > 0)) or @encomenda != []}
-      class="stack-1"
+    <a href={~p"/avisos"} class="btn btn--blob btn--block">Quero ser avisade</a>
+    <a
+      href="https://www.instagram.com/coletivo.sesh/"
+      target="_blank"
+      rel="noopener"
+      class="btn btn--ghost btn--block"
     >
-      <a href={~p"/pedido"} class="btn btn--primary btn--float">
-        Montar pedido →
-      </a>
-    </div>
+      @coletivo.sesh
+    </a>
+    <a href={~p"/sobre"} class="text-mono text-sm">Sobre o coletivo →</a>
   </section>
 </Layouts.app>

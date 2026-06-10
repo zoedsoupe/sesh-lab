@@ -1,4 +1,4 @@
-const CACHE = "sesh-shell-v2";
+const CACHE = "sesh-shell-v3";
 const SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -75,11 +75,12 @@ function renderNotification(data) {
   const badge = "/images/mascara-192.png";
 
   switch (data.t) {
+    // ── admin ──────────────────────────────────────────────────────────────
     case "new_order":
       return {
         title: `novo pedido — ${data.n || "cliente"}`,
         options: {
-          body: `${data.q} ${data.q === 1 ? "item" : "itens"} · r$ ${data.v}`,
+          body: `${data.q} ${data.q === 1 ? "ingresso" : "ingressos"} · r$ ${data.v}`,
           icon,
           badge,
           tag: `order-${data.id}`,
@@ -88,29 +89,54 @@ function renderNotification(data) {
         },
       };
 
-    case "oos":
+    case "soldout":
       return {
-        title: "estoque zerado",
+        title: "lote esgotado",
         options: {
-          body: `${data.name || data.p} esgotou`,
+          body: data.name || "um lote esgotou",
           icon,
           badge,
-          tag: `oos-${data.p}`,
+          tag: `soldout-${data.name || ""}`,
           data: { url: data.url || "/admin/" },
         },
       };
 
+    case "dj_application":
+      return {
+        title: `quer tocar — ${data.n || "alguém"}`,
+        options: {
+          body: "nova inscrição de DJ",
+          icon,
+          badge,
+          data: { url: data.url || "/admin/tocar" },
+        },
+      };
+
+    // ── client ─────────────────────────────────────────────────────────────
     case "order_status": {
-      const titles = {
-        confirmed: "pedido confirmado",
-        cancelled: "pedido cancelado",
-        expired: "pedido expirado",
-        pending: "pedido recebido",
+      const map = {
+        confirmed: {
+          title: "ingressos confirmados",
+          body: "toque pra ver seus QR codes",
+        },
+        cancelled: {
+          title: "pedido cancelado",
+          body: "toque pra ver os detalhes",
+        },
+        expired: { title: "pedido expirado", body: "o tempo do pix acabou" },
+        pending: {
+          title: "pedido recebido",
+          body: "toque pra ver os detalhes",
+        },
+      };
+      const m = map[data.s] || {
+        title: "atualização do pedido",
+        body: "toque pra ver",
       };
       return {
-        title: titles[data.s] || "atualização do pedido",
+        title: m.title,
         options: {
-          body: "toque para ver os detalhes",
+          body: m.body,
           icon,
           badge,
           tag: `status-${data.id}`,
@@ -120,9 +146,20 @@ function renderNotification(data) {
       };
     }
 
-    case "promo":
+    case "edition":
       return {
-        title: data.title || "novidade na sesh",
+        title: data.title || "nova edição anunciada",
+        options: {
+          body: data.body || "",
+          icon,
+          badge,
+          data: { url: data.url || "/" },
+        },
+      };
+
+    case "coupon":
+      return {
+        title: data.title || "novo cupom",
         options: {
           body: data.body || "",
           icon,
@@ -145,12 +182,12 @@ function renderNotification(data) {
 
     default:
       return {
-        title: "sesh sesh",
+        title: "SESH LAB.",
         options: {
           body: data.text || "",
           icon,
           badge,
-          data: { url: "/admin/" },
+          data: { url: "/" },
         },
       };
   }
@@ -167,11 +204,21 @@ self.addEventListener("fetch", (event) => {
   const isHTML = accept.includes("text/html");
 
   if (isHTML) {
+    // Admin is ALWAYS network — never cache /admin HTML. A cached 401 served on
+    // the scanner mid-event is the worst failure mode at the door.
+    if (url.pathname.startsWith("/admin")) {
+      event.respondWith(fetch(req));
+      return;
+    }
+
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((cache) => cache.put(req, copy));
+          // Only cache successful responses — never a 401/404/500 shell.
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((cache) => cache.put(req, copy));
+          }
           return res;
         })
         .catch(() =>

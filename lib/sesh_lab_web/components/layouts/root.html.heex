@@ -1,18 +1,40 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" style={assigns[:accent] && "--accent: #{@accent}"}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <meta name="robots" content="noindex,nofollow" />
-    <meta name="theme-color" content="#0a0a0a" />
+    <meta name="theme-color" content="#05070A" />
     <link rel="manifest" href={~p"/manifest.webmanifest"} />
-    <link rel="icon" href={~p"/images/mascara-192.png"} type="image/png" />
-    <link rel="apple-touch-icon" href={~p"/images/mascara-192.png"} />
-    <.live_title default="a.sesh.sesh">
+    <link rel="icon" href={~p"/images/favicon.svg"} type="image/svg+xml" />
+    <link rel="icon" href={~p"/favicon.ico"} sizes="any" />
+    <link rel="apple-touch-icon" href={~p"/images/apple-touch-icon.png"} />
+    <link
+      rel="preload"
+      href={~p"/fonts/jetbrains-mono-400.woff2"}
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href={~p"/fonts/vt323-400.woff2"}
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <.live_title default="SESH LAB.">
       {assigns[:page_title]}
     </.live_title>
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <script
+      :if={assigns[:scanner]}
+      defer
+      phx-track-static
+      type="text/javascript"
+      src={~p"/assets/js/scanner.js"}
+    >
+    </script>
     <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
     </script>
   </head>

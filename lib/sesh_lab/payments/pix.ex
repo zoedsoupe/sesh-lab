@@ -31,11 +31,15 @@ defmodule SeshLab.Payments.Pix do
     crc_payload <> crc16_ccitt(crc_payload)
   end
 
+  @doc """
+  QR como SVG. Escuro-sobre-claro de propósito: apps de banco e scanners
+  baratos leem bem melhor que o invertido.
+  """
   @spec to_svg(String.t()) :: String.t()
   def to_svg(emv_string) do
     emv_string
     |> EQRCode.encode()
-    |> EQRCode.svg(width: 280, color: "#e8e6e3", background_color: "#000000")
+    |> EQRCode.svg(width: 280, color: "#05070A", background_color: "#FFFFFF")
   end
 
   defp tlv(id, value) do

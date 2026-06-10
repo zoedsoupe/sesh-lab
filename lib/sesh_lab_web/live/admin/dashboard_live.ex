@@ -1,45 +1,79 @@
 defmodule SeshLabWeb.Admin.DashboardLive do
   use SeshLabWeb, :live_view
 
-  alias SeshLab.{Catalog, Orders, Promos, Settings}
+  alias SeshLab.{Clock, Editions, Tickets}
+  alias SeshLab.Editions.Edition
 
   @topic "admin:orders"
 
   @impl true
   def mount(_params, _session, socket) do
-    if connected?(socket) do
-      Phoenix.PubSub.subscribe(SeshLab.PubSub, @topic)
-      Phoenix.PubSub.subscribe(SeshLab.PubSub, Settings.topic())
-    end
+    if connected?(socket), do: Phoenix.PubSub.subscribe(SeshLab.PubSub, @topic)
 
-    {:ok, load_data(socket)}
+    editions = Editions.list_editions()
+    {:ok, socket |> assign(editions: editions) |> select_edition(default_edition(editions))}
   end
 
   @impl true
-  def handle_info({:new_order, _id}, socket), do: {:noreply, load_data(socket)}
-  def handle_info({:order_updated, _id}, socket), do: {:noreply, load_data(socket)}
-
-  def handle_info({:high_demand_changed, value}, socket),
-    do: {:noreply, assign(socket, high_demand: value)}
-
-  @impl true
-  def handle_event("toggle_high_demand", _params, socket) do
-    {:ok, settings} = Settings.toggle_high_demand()
-    {:noreply, assign(socket, high_demand: settings.is_high_demand)}
+  def handle_event("select_edition", %{"id" => id}, socket) do
+    edition = Enum.find(socket.assigns.editions, &(&1.id == id))
+    {:noreply, select_edition(socket, edition)}
   end
 
-  defp load_data(socket) do
+  @impl true
+  def handle_info({event, _id}, socket) when event in [:new_order, :order_updated, :soldout] do
+    {:noreply, refresh(socket)}
+  end
+
+  def handle_info(_msg, socket), do: {:noreply, socket}
+
+  # ── data ────────────────────────────────────────────────────────────────────
+
+  defp default_edition([]), do: nil
+
+  defp default_edition(editions) do
+    Enum.find(editions, &(&1.status == :published)) || List.first(editions)
+  end
+
+  defp select_edition(socket, nil) do
     assign(socket,
-      pending: Orders.list_pending(),
-      recent: Orders.list_recent(20),
-      products: Catalog.list_all_products(),
-      promos: Promos.list_all(),
-      high_demand: Settings.high_demand?()
+      edition: nil,
+      stats: nil,
+      by_type: %{},
+      pending: [],
+      recent: [],
+      page_title: "painel"
     )
   end
 
-  defp preorder?(order) do
-    Enum.any?(order.items, & &1.lead_time_days_snapshot)
+  defp select_edition(socket, %Edition{} = edition) do
+    socket
+    |> assign(edition: edition, page_title: "painel — #{edition.name}")
+    |> refresh()
+  end
+
+  defp refresh(%{assigns: %{edition: nil}} = socket), do: socket
+
+  defp refresh(%{assigns: %{edition: edition}} = socket) do
+    # Reload editions so a publish/status change elsewhere reflects in the selector.
+    editions = Editions.list_editions()
+    edition = Enum.find(editions, &(&1.id == edition.id)) || edition
+
+    assign(socket,
+      editions: editions,
+      edition: edition,
+      stats: Tickets.stats(edition.id),
+      by_type: Tickets.stats_by_type(edition.id),
+      pending: edition_orders(Tickets.list_pending(), edition.id),
+      recent: edition_orders(Tickets.list_recent(20), edition.id)
+    )
+  end
+
+  defp edition_orders(orders, edition_id), do: Enum.filter(orders, &(&1.edition_id == edition_id))
+
+  defp lote_stats(by_type, type) do
+    s = Map.get(by_type, type.id, %{held: 0, sold: 0, validated: 0})
+    Map.merge(s, %{capacity: type.capacity, available: type.available})
   end
 
   @impl true
@@ -48,7 +82,7 @@ defmodule SeshLabWeb.Admin.DashboardLive do
     <Layouts.admin flash={@flash}>
       <section class="stack-5">
         <div class="row space-between align-baseline">
-          <h1 class="text-xl text-mono">Painel</h1>
+          <h1 class="text-xl text-mono">painel</h1>
           <button
             type="button"
             data-push-toggle
@@ -58,129 +92,130 @@ defmodule SeshLabWeb.Admin.DashboardLive do
           </button>
         </div>
 
-        <div
-          class={[
-            "alert stack-2",
-            if(@high_demand, do: "alert--warning", else: "")
-          ]}
-          role="status"
-        >
-          <div class="row space-between align-center">
-            <div class="stack-1">
-              <span class="text-sm text-mono">
-                {if @high_demand, do: "alta demanda: ON", else: "alta demanda: off"}
-              </span>
-              <span class="text-xs text-dim">
-                {if @high_demand,
-                  do: "clientes veem aviso de tempo de confirmação variável.",
-                  else: "ative quando a sesh estiver cheia."}
-              </span>
-            </div>
-            <button
-              type="button"
-              phx-click="toggle_high_demand"
-              class={["btn", if(@high_demand, do: "btn--danger", else: "btn--ghost")]}
-            >
-              {if @high_demand, do: "desligar", else: "ativar"}
-            </button>
-          </div>
-        </div>
-
-        <nav class="row gap-3 text-xs">
-          <a href={~p"/admin/cupons"} class="text-accent">Gerenciar cupons</a>
+        <nav class="admin-actions">
+          <a href={~p"/admin/edicoes/nova"} class="admin-action admin-action--primary">
+            + nova edição
+          </a>
+          <a href={~p"/admin/validar"} class="admin-action">porta</a>
+          <a href={~p"/admin/cupons"} class="admin-action">cupons</a>
+          <a href={~p"/admin/tocar"} class="admin-action">quer tocar</a>
         </nav>
 
-        <section class="stack-3">
-          <h2 class="text-sm text-muted">Pendentes ({length(@pending)})</h2>
+        <p :if={@editions == []} class="text-sm text-dim">
+          nenhuma edição ainda.
+          <a href={~p"/admin/edicoes/nova"} class="text-accent">criar a primeira →</a>
+        </p>
 
-          <p :if={@pending == []} class="text-xs text-dim">Nenhum pedido pendente.</p>
-
-          <ul class="stack-2">
-            <li :for={o <- @pending} class="card">
-              <a href={~p"/admin/pedidos/#{o.id}"} class="stack-1 block">
-                <div class="row space-between">
-                  <span class="text-base">{o.customer_name}</span>
-                  <span class="text-mono text-sm">
-                    {SeshLabWeb.CoreComponents.money(o.total_cents)}
-                  </span>
-                </div>
-                <div class="row gap-3 text-xs">
-                  <span :if={o.promo_id} class="chip chip--cinnamon">Promo: {o.promo_id}</span>
-                  <span :if={preorder?(o)} class="chip chip--encomenda">Encomenda</span>
-                </div>
-                <div class="row space-between text-xs text-dim">
-                  <span>
-                    {Enum.map_join(o.items, " · ", &"#{&1.quantity}× #{&1.product_name_snapshot}")}
-                  </span>
-                  <span>{SeshLab.Clock.format(o.inserted_at, :time)}</span>
-                </div>
-              </a>
+        <section :if={@editions != []} class="stack-2">
+          <label class="field-label text-xs text-muted">edição</label>
+          <ul class="row gap-3 wrap">
+            <li :for={e <- @editions}>
+              <button
+                type="button"
+                phx-click="select_edition"
+                phx-value-id={e.id}
+                class={["chip", @edition && e.id == @edition.id && "chip--active"]}
+              >
+                {e.name} · {e.status}
+              </button>
             </li>
           </ul>
         </section>
 
-        <section class="stack-3">
-          <div class="row space-between align-baseline">
-            <h2 class="text-sm text-muted">Promos</h2>
-            <a href={~p"/admin/promos/novo"} class="text-xs text-accent">+ Nova Promo</a>
-          </div>
-          <p :if={@promos == []} class="text-xs text-dim">Nenhuma promo ainda.</p>
-          <ul class="stack-2">
-            <li :for={promo <- @promos} class="card">
-              <a href={~p"/admin/promos/#{promo.id}"} class="row space-between align-center">
-                <div class="stack-1">
-                  <span class="text-base">{promo.name}</span>
-                  <span class="text-xs text-dim">
-                    {length(promo.items)} {if length(promo.items) == 1, do: "item", else: "itens"} · {SeshLabWeb.CoreComponents.money(
-                      promo.total_cents
-                    )}
-                  </span>
-                </div>
-                <span :if={not promo.is_active} class="badge badge--expired">Inativa</span>
-              </a>
-            </li>
-          </ul>
-        </section>
+        <%= if @edition do %>
+          <section class="stack-3">
+            <div class="row space-between align-baseline">
+              <h2 class="text-sm text-muted">{@edition.name}</h2>
+              <a href={~p"/admin/edicoes/#{@edition.id}"} class="text-xs text-accent">editar →</a>
+            </div>
 
-        <section class="stack-3">
-          <div class="row space-between align-baseline">
-            <h2 class="text-sm text-muted">Produtos</h2>
-            <a href={~p"/admin/produtos/novo"} class="text-xs text-accent">+ Novo Produto</a>
-          </div>
-          <ul class="stack-2">
-            <li :for={p <- @products} class="card">
-              <a href={~p"/admin/produtos/#{p.id}"} class="row space-between align-center">
-                <div class="stack-1">
-                  <span class="text-base">{p.name}</span>
-                  <span class="text-xs text-dim">
-                    {p.stock} em estoque · {SeshLabWeb.CoreComponents.money(p.unit_price_cents)}
-                  </span>
-                  <span
-                    :if={p.is_preorder}
-                    class="chip chip--encomenda"
-                  >
-                    encomenda{if p.lead_time_days, do: " #{p.lead_time_days}d", else: ""}
-                  </span>
-                </div>
-                <span :if={not p.is_active} class="badge badge--expired">inativo</span>
-              </a>
-            </li>
-          </ul>
-        </section>
+            <div class="stats-grid">
+              <.stat label="capacidade" value={@stats.capacity} />
+              <.stat label="vendido" value={@stats.sold_confirmed} />
+              <.stat label="pendente" value={@stats.held_pending} />
+              <.stat label="disponível" value={@stats.available} />
+              <.stat label="validados" value={@stats.validated} />
+            </div>
+          </section>
 
-        <section :if={@recent != []} class="stack-3">
-          <h2 class="text-sm text-muted">Histórico</h2>
-          <ul class="stack-2">
-            <li :for={o <- @recent} class="row space-between text-sm">
-              <a href={~p"/admin/pedidos/#{o.id}"} class="row space-between flex-1">
-                <span>{o.customer_name}</span>
-                <.status_badge status={o.status} />
-              </a>
-            </li>
-          </ul>
-        </section>
+          <section :if={@edition.ticket_types != []} class="stack-2">
+            <h2 class="text-sm text-muted">lotes</h2>
+            <table class="stats-table text-sm">
+              <thead>
+                <tr class="text-xs text-dim">
+                  <th class="text-left">lote</th>
+                  <th>cap</th>
+                  <th>vend</th>
+                  <th>pend</th>
+                  <th>disp</th>
+                  <th>valid</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr :for={type <- @edition.ticket_types}>
+                  <% s = lote_stats(@by_type, type) %>
+                  <td class="text-left">{type.name}</td>
+                  <td class="text-mono">{s.capacity}</td>
+                  <td class="text-mono">{s.sold}</td>
+                  <td class="text-mono">{s.held}</td>
+                  <td class="text-mono">{s.available}</td>
+                  <td class="text-mono">{s.validated}</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section class="stack-3">
+            <h2 class="text-sm text-muted">pendentes ({length(@pending)})</h2>
+            <p :if={@pending == []} class="text-xs text-dim">nenhum pedido pendente.</p>
+            <ul class="stack-2">
+              <li :for={o <- @pending} class="card">
+                <a href={~p"/admin/pedidos/#{o.id}"} class="stack-1 block">
+                  <div class="row space-between">
+                    <span class="text-base">{o.customer_name}</span>
+                    <span class="text-mono text-sm">{money(o.total_cents)}</span>
+                  </div>
+                  <div class="row space-between text-xs text-dim">
+                    <span>
+                      {Enum.map_join(
+                        o.items,
+                        " · ",
+                        &"#{&1.quantity}× #{&1.ticket_type_name_snapshot}"
+                      )}
+                    </span>
+                    <span>{Clock.format(o.inserted_at, :time)}</span>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </section>
+
+          <section :if={@recent != []} class="stack-3">
+            <h2 class="text-sm text-muted">histórico</h2>
+            <ul class="stack-2">
+              <li :for={o <- @recent} class="row space-between text-sm">
+                <a href={~p"/admin/pedidos/#{o.id}"} class="row space-between flex-1">
+                  <span>{o.customer_name}</span>
+                  <.status_badge status={o.status} />
+                </a>
+              </li>
+            </ul>
+          </section>
+        <% end %>
       </section>
     </Layouts.admin>
+    """
+  end
+
+  attr :label, :string, required: true
+  attr :value, :integer, required: true
+
+  defp stat(assigns) do
+    ~H"""
+    <div class="stat stack-1">
+      <span class="text-mono text-lg">{@value}</span>
+      <span class="text-xs text-dim">{@label}</span>
+    </div>
     """
   end
 end

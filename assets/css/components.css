@@ -78,6 +78,11 @@ body:has(.btn--float) .shell {
   white-space: nowrap;
 }
 
+/* Páginas com logo gigante no hero (landing, teaser, /sobre) não repetem no header. */
+body:has(.sesh-logo--hero) .brand {
+  display: none;
+}
+
 .brand-name {
   letter-spacing: 0.04em;
   color: var(--accent);
@@ -93,8 +98,32 @@ body:has(.btn--float) .shell {
 
 .site-nav {
   grid-area: nav;
-  justify-self: end;
-  flex-shrink: 0;
+  /* full-width row on mobile: spread links edge-to-edge, never wrap */
+  justify-self: stretch;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+/* chamative nav: accent, uppercase mono, neon glow on hover */
+.site-nav a {
+  color: var(--accent-soft);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  transition:
+    color var(--motion-fast, 120ms) ease,
+    text-shadow var(--motion-fast, 120ms) ease;
+}
+.site-nav a:hover,
+.site-nav a:focus-visible {
+  color: var(--accent);
+  text-shadow: 0 0 8px var(--accent);
 }
 
 @media (min-width: 640px) {
@@ -135,6 +164,30 @@ body:has(.btn--float) .shell {
 
 .site-footer p + p {
   margin-top: var(--s-2);
+}
+
+.site-footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3) var(--s-4);
+  align-items: center;
+}
+.site-footer-nav a {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+}
+.site-footer-nav a:hover,
+.site-footer-nav a:focus-visible {
+  color: var(--accent);
+}
+/* Instagram = empurrado pra direita, em accent (acesso fácil em toda página) */
+.site-footer-ig {
+  margin-left: auto;
+  color: var(--accent) !important;
+  text-shadow: 0 0 8px var(--accent-glow);
 }
 
 /* card */
@@ -562,6 +615,36 @@ select.input {
   flex-basis: 100%;
 }
 
+/* requisitos do lote (ex: "marque 2 amigos no post") — chamativo: é condição
+   pra o ingresso valer na porta. Full-width abaixo do stepper. */
+.lot-req {
+  flex-basis: 100%;
+  order: 9;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-3);
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-glow);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.lot-req-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  font-weight: 700;
+}
+.lot-req-label::before {
+  content: "★ ";
+}
+.lot-req-text {
+  color: var(--fg);
+  font-size: var(--text-sm);
+}
+
 .stepper {
   display: flex;
   align-items: center;
@@ -647,12 +730,27 @@ select.input {
   color: var(--fg-dim);
 }
 
+.badge--draft {
+  color: var(--fg-muted);
+}
+
+.badge--published {
+  color: var(--green);
+  border-color: rgba(89, 232, 108, 0.3);
+}
+
+.badge--past {
+  color: var(--fg-dim);
+}
+
 /* pix */
+/* QRs render dark-on-light — white panel + padding gives the quiet zone the
+   reader (bank app / jsQR) needs. */
 .qr-frame {
-  padding: var(--s-3);
-  background: #000;
+  padding: var(--s-5);
+  background: #fff;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   display: flex;
   justify-content: center;
 }
@@ -719,6 +817,10 @@ select.input {
   gap: var(--s-3);
   text-align: center;
   font-size: 0.72rem;
+  /* avisos box = rosa (accent), não verde */
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-glow);
 }
 
 .push-prompt .row {
@@ -806,6 +908,7 @@ select.input {
 
 .flash {
   pointer-events: auto;
+  cursor: pointer;
   max-width: var(--container);
   width: calc(100% - var(--s-5));
   padding: var(--s-3) var(--s-4);
@@ -815,6 +918,14 @@ select.input {
   color: var(--fg);
   font-size: var(--text-sm);
   box-shadow: var(--shadow-1);
+  transition: opacity 0.3s ease;
+}
+
+/* dead-view auto-hide (LiveView clears server flash instead) */
+.flash--hide {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .flash--error {
@@ -837,6 +948,55 @@ details[open] summary {
 }
 
 /* admin tweaks */
+
+/* admin: fontes maiores pra leitura rápida na correria do evento */
+.shell--admin .text-xs {
+  font-size: var(--text-sm);
+}
+.shell--admin .text-sm {
+  font-size: var(--text-base);
+}
+
+/* CRUD quick-actions — chips chamativos (accent border, fill no hover) */
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+.admin-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: var(--s-1) var(--s-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition:
+    background var(--motion-fast, 120ms) ease,
+    color var(--motion-fast, 120ms) ease,
+    box-shadow var(--motion-fast, 120ms) ease;
+}
+.admin-action:hover,
+.admin-action:focus-visible {
+  background: var(--accent);
+  color: #05070a;
+  box-shadow: 0 0 12px var(--accent);
+}
+.admin-action--primary {
+  background: var(--accent);
+  color: #05070a;
+  font-weight: 500;
+}
+.admin-action--primary:hover,
+.admin-action--primary:focus-visible {
+  filter: brightness(1.08);
+  color: #05070a;
+}
+
 .cta {
   display: flex;
 }
@@ -947,4 +1107,242 @@ details[open] summary {
 
 .upload-progress::-moz-progress-bar {
   background: var(--accent);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Y2K cyber-rave skin (Fase 6). Structure first; polish is iterative.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* grain texture over everything (feTurbulence data-URI, ~5% opacity) */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::after {
+    display: none;
+  }
+}
+
+/* pixel/bitmap headings — VT323 only ≥1.25rem (illegible small) */
+.text-xl,
+.text-2xl,
+.flyer-title,
+.scan-result-inner .text-xl {
+  font-family: var(--font-pixel);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+/* wirebox — white-stroke frame, no fill, square corners (the default container) */
+.wirebox {
+  border: 1px solid var(--fg);
+  border-radius: 0;
+  padding: var(--s-4);
+  background: transparent;
+}
+
+/* blob CTA — accent fill, organic radius, dark text. One per screen. */
+.btn--blob {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #05070a;
+  font-family: var(--font-pixel);
+  font-size: var(--text-lg);
+  border-radius: 12px;
+  font-weight: 400;
+}
+.btn--blob:hover {
+  filter: brightness(1.08);
+  border-color: var(--accent);
+  /* re-assert dark text: beats the global `a:hover { color: --accent }`
+     (same accent as the fill → texto sumia) */
+  color: #05070a;
+}
+
+/* decorative pink blob, cropped by an overflow:hidden parent */
+.blob-deco {
+  position: absolute;
+  width: 60vw;
+  max-width: 22rem;
+  aspect-ratio: 1;
+  background: var(--accent);
+  border-radius: var(--blob-radius);
+  opacity: 0.22;
+  filter: blur(2px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* date in two neon colors: 21H (cyan) / 27JUN. (green) */
+.date-duo {
+  display: flex;
+  gap: var(--s-3);
+  align-items: baseline;
+  font-family: var(--font-pixel);
+  font-size: var(--text-2xl);
+  line-height: 1;
+}
+.date-duo-time {
+  color: var(--cyan);
+}
+.date-duo-date {
+  color: var(--green);
+}
+
+/* landing flyer */
+.flyer,
+.teaser {
+  position: relative;
+  overflow: hidden;
+}
+.flyer-title {
+  font-size: var(--text-2xl);
+  color: var(--fg);
+  text-transform: uppercase;
+}
+.lineup li {
+  letter-spacing: 0.04em;
+}
+
+/* ticket card — wirebox holding the white QR panel */
+.ticket-card {
+  border: 1px solid var(--fg);
+  border-radius: 0;
+  padding: var(--s-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+/* ── dashboard stats ─────────────────────────────────────────────────────── */
+/* fixed-size cells: every square identical regardless of how the row wraps
+   (flex-grow stretched the last row → uneven). */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 5.75rem));
+  justify-content: center;
+  gap: var(--s-2);
+}
+.stat {
+  border: 1px solid var(--border);
+  padding: var(--s-2) var(--s-2);
+  text-align: center;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+/* label fica pequeno mesmo com o bump de fonte do admin (senão "disponível"
+   estoura a célula) */
+.shell--admin .stat .text-xs {
+  font-size: var(--text-xs);
+}
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.stats-table th,
+.stats-table td {
+  padding: var(--s-1) var(--s-2);
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.stats-table td:first-child,
+.stats-table th:first-child {
+  text-align: left;
+}
+
+.chip--active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.color-input {
+  width: 3rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: none;
+  cursor: pointer;
+}
+
+/* ── door scanner ────────────────────────────────────────────────────────── */
+.scanner-cam {
+  border: 1px solid var(--fg);
+  background: #000;
+  aspect-ratio: 1;
+  overflow: hidden;
+}
+.scanner-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.scan-result {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--s-5);
+  cursor: pointer;
+}
+.scan-result--ok {
+  background: var(--green);
+  color: #05070a;
+}
+.scan-result--err {
+  background: var(--danger);
+  color: #05070a;
+}
+.scan-result-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.scan-result-mark {
+  font-size: 5rem;
+  line-height: 1;
+  font-family: var(--font-pixel);
+}
+
+/* ── SESH official logo (inline SVG; SESH=currentColor, LAB=gradient) ─────── */
+.sesh-logo {
+  display: block;
+  height: 1.75rem;
+  /* SESH (currentColor) tinge com o accent da edição */
+  color: var(--accent);
+}
+.sesh-logo svg {
+  display: block;
+  height: 100%;
+  width: auto;
+}
+/* arte custom da edição: renderiza crua, só redimensiona (sem recolor/tema) */
+.sesh-logo--custom {
+  width: auto;
+  color: initial;
+  object-fit: contain;
+}
+.sesh-logo--sm {
+  height: 1.25rem;
+}
+.sesh-logo--hero {
+  height: 4.5rem;
+  /* left-aligned like every other logo. The official logo is a block <span>
+     (full width → SVG sits left); custom uploads are <img> (intrinsic width),
+     so pin them left too instead of centering. */
+  margin-inline: 0;
+}
+.sesh-logo--custom {
+  margin-inline-end: auto;
 }

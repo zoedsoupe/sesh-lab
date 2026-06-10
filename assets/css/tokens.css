@@ -1,26 +1,32 @@
 :root {
-  --bg: #0a0a0a;
-  --surface: #111111;
-  --surface-2: #161616;
-  --border: #242424;
-  --border-strong: #353535;
+  /* Y2K cyber-rave — bg quase preto, accent rosa por edição, ciano/verde neon */
+  --bg: #05070a;
+  --surface: #0a0f16;
+  --surface-2: #0f1620;
+  --border: #1c2430;
+  --border-strong: #2a3543;
 
-  --fg: #e8e6e3;
-  --fg-muted: #9a9794;
-  --fg-dim: #5d5b58;
+  --fg: #f3f3f3;
+  --fg-muted: #9aa3b0;
+  --fg-dim: #5d6675;
 
-  --accent: #f793d9;
-  --accent-soft: #c47ba8;
-  --accent-glow: rgba(247, 147, 217, 0.18);
+  /* --accent is overridden per-edition via inline style on <html> */
+  --accent: #f07bc0;
+  --accent-soft: #d98fb8;
+  --accent-glow: rgba(240, 123, 192, 0.18);
 
-  --danger: #ff6f7c;
-  --ok: #7cd6a8;
-  --warn: #e6c36e;
+  --cyan: #16c8d8;
+  --green: #59e86c;
 
-  --cinnamon-1: #f3c4b2;
-  --cinnamon-2: #e4b595;
-  --cinnamon-3: #e6c36e;
-  --cinnamon-soft: #f9e9cf;
+  --danger: #ff5d6e;
+  --ok: var(--green);
+  --warn: var(--cyan);
+
+  /* legacy aliases (carry-over component classes) */
+  --cinnamon-1: var(--cyan);
+  --cinnamon-2: var(--cyan);
+  --cinnamon-3: var(--green);
+  --cinnamon-soft: var(--green);
 
   --s-1: 0.25rem;
   --s-2: 0.5rem;
@@ -37,7 +43,9 @@
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono:
-    ui-monospace, "JetBrains Mono", "IBM Plex Mono", Menlo, monospace;
+    "JetBrains Mono", ui-monospace, "IBM Plex Mono", Menlo, monospace;
+  /* pixel/bitmap — headings/CTA only, never small body or codes */
+  --font-pixel: "VT323", "JetBrains Mono", monospace;
 
   --text-xs: 0.875rem;
   --text-sm: 1rem;
@@ -52,6 +60,32 @@
   --container: 26rem;
 
   --tap: 44px;
+
+  /* organic blob corner for CTA / decorative shapes */
+  --blob-radius: 58% 42% 55% 45% / 48% 60% 40% 52%;
+}
+
+/* ── self-hosted fonts (esbuild externalizes /fonts/*) ───────────────────── */
+@font-face {
+  font-family: "VT323";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/vt323-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono-700.woff2") format("woff2");
 }
 
 @media (prefers-reduced-motion: no-preference) {

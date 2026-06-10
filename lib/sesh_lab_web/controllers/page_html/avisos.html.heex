@@ -1,9 +1,10 @@
 <Layouts.app flash={@flash}>
   <section class="stack-5">
     <header class="stack-1">
-      <h1 class="text-xl text-mono">avisos</h1>
+      <h1 class="text-xl text-mono">Avisos</h1>
       <p class="text-xs text-dim">
-        receba uma notificação quando seu pedido for confirmado. tudo neste aparelho.
+        Receba uma notificação quando seu pedido for confirmado ou quando uma nova
+        edição abrir. Tudo neste aparelho.
       </p>
     </header>
 
@@ -13,52 +14,52 @@
         class="btn btn--primary btn--block"
         data-client-push-toggle
       >
-        ativar avisos
+        Ativar avisos
       </button>
 
       <div class="stack-2">
         <label class="field field--inline">
           <input type="checkbox" class="checkbox" data-topic="order_status" checked />
-          <span class="field-label">status dos meus pedidos</span>
+          <span class="field-label">Status do meu pedido</span>
         </label>
         <label class="field field--inline">
-          <input type="checkbox" class="checkbox" data-topic="promos" />
-          <span class="field-label">promoções</span>
+          <input type="checkbox" class="checkbox" data-topic="editions" />
+          <span class="field-label">Novas edições</span>
         </label>
         <label class="field field--inline">
           <input type="checkbox" class="checkbox" data-topic="coupons" />
-          <span class="field-label">cupons (novidades e expiração)</span>
+          <span class="field-label">Cupons (novidades e expiração)</span>
         </label>
         <p class="text-xs text-dim">
-          ative os avisos primeiro para escolher o que receber.
+          Ative os avisos primeiro para escolher o que receber.
         </p>
       </div>
     </section>
 
     <details class="stack-2">
-      <summary class="text-sm text-muted">como instalar o app e ativar notificações</summary>
+      <summary class="text-sm text-muted">Como instalar o app e ativar notificações</summary>
 
       <div class="stack-3">
         <div class="stack-1">
-          <p class="text-sm">no iPhone (Safari)</p>
+          <p class="text-sm">No iPhone (Safari)</p>
           <p class="text-xs text-dim">
-            toque no botão compartilhar e escolha "adicionar à tela de início".
-            abra pelo ícone na tela inicial e ative os avisos por aqui.
+            Toque no botão compartilhar e escolha "adicionar à tela de início".
+            Abra pelo ícone na tela inicial e ative os avisos por aqui.
           </p>
         </div>
         <div class="stack-1">
-          <p class="text-sm">no Android (Chrome)</p>
+          <p class="text-sm">No Android (Chrome)</p>
           <p class="text-xs text-dim">
-            toque no menu (⋮) e escolha "instalar app" ou "adicionar à tela inicial".
-            abra pelo ícone instalado e ative os avisos.
+            Toque no menu (⋮) e escolha "instalar app" ou "adicionar à tela inicial".
+            Abra pelo ícone instalado e ative os avisos.
           </p>
         </div>
         <p class="text-xs text-dim">
-          se já tiver bloqueado, libere as notificações nas configurações do navegador.
+          Se já tiver bloqueado, libere as notificações nas configurações do navegador.
         </p>
       </div>
     </details>
 
-    <a href={~p"/"} class="btn btn--ghost btn--block">voltar à vitrine</a>
+    <a href={~p"/"} class="btn btn--ghost btn--block">Voltar</a>
   </section>
 </Layouts.app>

@@ -13,14 +13,14 @@ defmodule SeshLabWeb.ErrorHTMLTest do
   test "renders 404.html with custom page" do
     body = render_str("404.html")
     assert body =~ "404"
-    assert body =~ "Página não encontrada."
-    assert body =~ "Voltar à vitrine"
+    assert body =~ "Essa página sumiu na pista."
+    assert body =~ "Voltar pro início"
   end
 
   test "renders 401.html with custom page" do
     body = render_str("401.html")
     assert body =~ "401"
-    assert body =~ "Acesso restrito."
+    assert body =~ "Área só da equipe."
   end
 
   test "renders 500.html with custom page" do

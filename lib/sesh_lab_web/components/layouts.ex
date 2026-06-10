@@ -2,6 +2,8 @@ defmodule SeshLabWeb.Layouts do
   @moduledoc false
   use SeshLabWeb, :html
 
+  alias Phoenix.LiveView.JS
+
   embed_templates "layouts/*"
 
   attr :flash, :map, default: %{}
@@ -12,18 +14,32 @@ defmodule SeshLabWeb.Layouts do
     <div class="shell">
       <header class="site-header">
         <a href={~p"/"} class="brand">
-          <span class="brand-name text-mono text-sm">a.sesh.sesh</span>
+          <.sesh_logo />
         </a>
-        <img src={~p"/images/mascara-72.png"} alt="" class="brand-logo" width="28" height="28" />
         <nav class="site-nav row gap-3 align-center">
-          <a href={~p"/meus-pedidos"} class="text-dim text-xs">meus pedidos</a>
-          <a href={~p"/avisos"} class="text-dim text-xs">avisos</a>
+          <a href={~p"/meus-ingressos"}>meus ingressos</a>
+          <a href={~p"/tocar"}>quer tocar?</a>
         </nav>
       </header>
 
       <main class="site-main">
         {render_slot(@inner_block)}
       </main>
+
+      <footer class="site-footer">
+        <nav class="site-footer-nav">
+          <a href={~p"/sobre"}>sobre</a>
+          <a href={~p"/avisos"}>avisos</a>
+          <a
+            href="https://www.instagram.com/coletivo.sesh/"
+            target="_blank"
+            rel="noopener"
+            class="site-footer-ig"
+          >
+            @coletivo.sesh
+          </a>
+        </nav>
+      </footer>
 
       <.flash_group flash={@flash} />
     </div>
@@ -37,10 +53,12 @@ defmodule SeshLabWeb.Layouts do
     ~H"""
     <div class="shell shell--admin">
       <header class="site-header">
-        <a href={~p"/admin"} class="brand text-mono text-sm">/admin - a.sesh.sesh</a>
-        <img src={~p"/images/mascara-72.png"} alt="" class="brand-logo" width="28" height="28" />
+        <a href={~p"/admin"} class="brand row gap-2 align-center">
+          <.sesh_logo class="sesh-logo--sm" />
+          <span class="text-mono text-xs text-dim">/admin</span>
+        </a>
         <nav class="site-nav row gap-3">
-          <a href={~p"/"} class="text-dim text-xs">vitrine</a>
+          <a href={~p"/"}>site</a>
         </nav>
       </header>
 
@@ -72,10 +90,18 @@ defmodule SeshLabWeb.Layouts do
 
   def flash(assigns) do
     msg = Phoenix.Flash.get(assigns.flash, assigns.kind)
-    assigns = assign(assigns, :msg, msg)
+    assigns = assign(assigns, msg: msg, dom_id: assigns.id || "flash-#{assigns.kind}")
 
     ~H"""
-    <div :if={@msg} id={@id} class={"flash flash--#{@kind}"} role="alert">
+    <div
+      :if={@msg}
+      id={@dom_id}
+      class={"flash flash--#{@kind}"}
+      role="alert"
+      phx-hook="Flash"
+      phx-click={JS.push("lv:clear-flash", value: %{key: @kind})}
+      title="toque pra dispensar"
+    >
       <p :if={@title} class="flash-title">{@title}</p>
       <p>{@msg}</p>
     </div>

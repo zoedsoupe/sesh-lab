@@ -15,7 +15,7 @@ defmodule SeshLabWeb.Endpoint do
     websocket: [connect_info: [session: @session_options]],
     longpoll: [connect_info: [session: @session_options]]
 
-  # User-uploaded product photos. Dev: priv/static/uploads. Prod: /data/uploads
+  # User-uploaded edition logos. Dev: priv/static/uploads. Prod: /data/uploads
   # via config/prod.exs. Must precede the "/" Plug.Static below so /uploads/*
   # bypasses :only on the priv/static plug.
   plug Plug.Static,
@@ -27,7 +27,7 @@ defmodule SeshLabWeb.Endpoint do
         {:sesh_lab, "priv/static/uploads"}
       ),
     gzip: false,
-    only: ~w(products)
+    only: ~w(editions)
 
   # Serve at "/" the static files from "priv/static" directory.
   #

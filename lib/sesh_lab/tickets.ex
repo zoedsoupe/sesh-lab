@@ -516,6 +516,53 @@ defmodule SeshLab.Tickets do
     }
   end
 
+  @doc """
+  Stats por lote pra montar a tabela do dashboard. Mapa
+  `type_id => %{held, sold, validated}` (capacity/available já vêm no
+  `%TicketType{}`). Dois grouped queries, sem N+1.
+  """
+  @spec stats_by_type(Ecto.UUID.t()) ::
+          %{
+            optional(Ecto.UUID.t()) => %{
+              held: non_neg_integer(),
+              sold: non_neg_integer(),
+              validated: non_neg_integer()
+            }
+          }
+  def stats_by_type(edition_id) do
+    base = %{held: 0, sold: 0, validated: 0}
+
+    item_counts =
+      from(i in OrderItem,
+        join: o in Order,
+        on: o.id == i.order_id,
+        where: o.edition_id == ^edition_id and o.status in [:pending, :confirmed],
+        group_by: [i.ticket_type_id, o.status],
+        select: {i.ticket_type_id, o.status, coalesce(sum(i.quantity), 0)}
+      )
+      |> Repo.all()
+
+    validated =
+      from(t in Ticket,
+        where: t.edition_id == ^edition_id and not is_nil(t.used_at),
+        group_by: t.ticket_type_id,
+        select: {t.ticket_type_id, count(t.id)}
+      )
+      |> Repo.all()
+
+    acc =
+      Enum.reduce(item_counts, %{}, fn {type_id, status, qty}, acc ->
+        key = if status == :pending, do: :held, else: :sold
+        row = Map.get(acc, type_id, base)
+        Map.put(acc, type_id, %{row | key => qty})
+      end)
+
+    Enum.reduce(validated, acc, fn {type_id, n}, acc ->
+      row = Map.get(acc, type_id, base)
+      Map.put(acc, type_id, %{row | validated: n})
+    end)
+  end
+
   # ── PubSub ──────────────────────────────────────────────────────────────────
 
   defp broadcast(event, id) do

@@ -21,6 +21,7 @@ defmodule SeshLab.Editions.TicketType do
     belongs_to :edition, Edition
 
     field :name, :string
+    field :description, :string
     field :price_cents, :integer
     field :capacity, :integer
     field :available, :integer
@@ -32,7 +33,7 @@ defmodule SeshLab.Editions.TicketType do
     timestamps()
   end
 
-  @castable ~w(name price_cents capacity is_active opens_at closes_at position)a
+  @castable ~w(name description price_cents capacity is_active opens_at closes_at position)a
   @required ~w(name price_cents capacity)a
 
   def changeset(ticket_type, attrs) do

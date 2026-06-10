@@ -39,13 +39,38 @@ import { LiveSocket } from "phoenix_live_view";
 import { hooks as colocatedHooks } from "phoenix-colocated/sesh_lab";
 import topbar from "../vendor/topbar";
 
+// Auto-dismiss flashes so the fixed-bottom toast never sits on top of a button
+// (e.g. "publicar" on the edition form). LiveView pages use this hook, which
+// also clears server-side flash state (via the phx-click lv:clear-flash) so a
+// patched re-render doesn't bring it back. Resets the timer on each update so a
+// fresh message gets its full lifetime. Dead views: see bindFlash() below.
+const Hooks = {
+  Flash: {
+    mounted() {
+      this.arm();
+    },
+    updated() {
+      this.arm();
+    },
+    arm() {
+      clearTimeout(this.timer);
+      this.timer = setTimeout(() => this.el.click(), 4500);
+    },
+    destroyed() {
+      clearTimeout(this.timer);
+    },
+  },
+};
+
 const csrfToken = document
   .querySelector("meta[name='csrf-token']")
   .getAttribute("content");
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: { _csrf_token: csrfToken },
-  hooks: { ...colocatedHooks },
+  // window.SeshHooks is populated by separately-bundled entries (e.g.
+  // scanner.js) loaded before this script on the pages that need them.
+  hooks: { ...colocatedHooks, ...Hooks, ...(window.SeshHooks || {}) },
 });
 
 // Show progress bar on live navigation and form submits
@@ -70,6 +95,24 @@ function init() {
   bindAvisosToggle();
   bindOrderEndpoint();
   bindVitrineStream();
+  bindFlash();
+}
+
+// Dead-view flashes (controller pages) get no LiveView hook — auto-hide them
+// here. LiveView pages carry data-phx-session; skip those (the Flash hook owns
+// them, and clears server state so they don't reappear).
+function bindFlash() {
+  if (document.querySelector("[data-phx-session]")) return;
+  for (const el of document.querySelectorAll(".flash")) {
+    if (el.dataset.armed) continue;
+    el.dataset.armed = "1";
+    const hide = () => el.classList.add("flash--hide");
+    const t = setTimeout(hide, 4500);
+    el.addEventListener("click", () => {
+      clearTimeout(t);
+      hide();
+    });
+  }
 }
 
 if (document.readyState === "loading") {

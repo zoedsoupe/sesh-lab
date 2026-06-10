@@ -8,21 +8,21 @@ defmodule SeshLabWeb.Router do
     plug :put_root_layout, html: {SeshLabWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    # Tematiza toda página com o accent da edição publicada (CSS var --accent).
+    plug SeshLabWeb.Plugs.Accent
   end
 
   pipeline :admin do
     plug SeshLabWeb.Plugs.BasicAuth
   end
 
+  pipeline :dj_rate_limit do
+    plug SeshLabWeb.Plugs.RateLimit, max: 5, window_ms: 3_600_000, bucket: "tocar"
+  end
+
   pipeline :admin_api do
     plug :accepts, ["json"]
     plug SeshLabWeb.Plugs.BasicAuth
-  end
-
-  pipeline :client_stream do
-    plug :accepts, ["sse"]
-    plug :fetch_session
-    plug :protect_from_forgery
   end
 
   # Public JSON for customer push. Keeps CSRF protection (browser sends the
@@ -37,17 +37,19 @@ defmodule SeshLabWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :index
-    get "/pedido", OrderController, :new
-    post "/pedido", OrderController, :create
-    get "/meus-pedidos", OrderController, :history
+    get "/comprar", OrderController, :new
+    post "/comprar", OrderController, :create
+    get "/compra/:id", OrderController, :show
+    get "/meus-ingressos", OrderController, :history
+    get "/sobre", PageController, :sobre
     get "/avisos", PageController, :avisos
-    get "/pedido/:id", OrderController, :show
+    get "/tocar", DjController, :new
   end
 
   scope "/", SeshLabWeb do
-    pipe_through :client_stream
+    pipe_through [:browser, :dj_rate_limit]
 
-    get "/vitrine/stream", PageController, :stock_stream
+    post "/tocar", DjController, :create
   end
 
   scope "/", SeshLabWeb do
@@ -64,11 +66,11 @@ defmodule SeshLabWeb.Router do
     pipe_through [:browser, :admin]
 
     live "/", Admin.DashboardLive, :index
-    live "/produtos/novo", Admin.ProductFormLive, :new
-    live "/produtos/:id", Admin.ProductFormLive, :edit
-    live "/promos/novo", Admin.PromoFormLive, :new
-    live "/promos/:id", Admin.PromoFormLive, :edit
+    live "/edicoes/nova", Admin.EditionFormLive, :new
+    live "/edicoes/:id", Admin.EditionFormLive, :edit
     live "/pedidos/:id", Admin.OrderShowLive, :show
+    live "/validar", Admin.ScannerLive, :index
+    live "/tocar", Admin.DjApplicationsLive, :index
 
     live "/cupons", Admin.CouponsLive, :index
     live "/cupons/novo", Admin.CouponFormLive, :new

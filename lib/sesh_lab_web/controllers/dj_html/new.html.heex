@@ -1,0 +1,79 @@
+<Layouts.app flash={@flash}>
+  <section :if={@submitted} class="stack-3">
+    <header class="stack-1">
+      <h1 class="text-xl text-mono">Recebido!</h1>
+      <p class="text-sm text-dim">Tua inscrição chegou. A SESH te chama se rolar.</p>
+    </header>
+    <a href={~p"/"} class="btn btn--ghost btn--block">Voltar</a>
+  </section>
+
+  <.form
+    :let={f}
+    :if={not @submitted}
+    for={@changeset}
+    action={~p"/tocar"}
+    class="stack-5"
+    id="dj-form"
+  >
+    <input type="hidden" name="ts" value={@form_ts} />
+
+    <header class="stack-2">
+      <h1 class="text-xl text-mono">Quer tocar?</h1>
+      <p class="text-sm text-muted">
+        Os DJs da cena têm que começar em algum lugar. Equipamento de som à
+        disposição, cobertura fotográfica e filmagem pra portfólio.
+      </p>
+      <p class="text-xs text-dim">Manda teu set. A gente escuta tudo.</p>
+    </header>
+
+    <div :if={Phoenix.Flash.get(@flash, :error)} class="alert alert--error" role="alert">
+      <p class="text-sm">{Phoenix.Flash.get(@flash, :error)}</p>
+    </div>
+
+    <%!-- honeypot: bot preenche, humano não vê (off-screen, não display:none) --%>
+    <div style="position:absolute;left:-9999px" aria-hidden="true">
+      <label>
+        não preencha este campo <input type="text" name="site" tabindex="-1" autocomplete="off" />
+      </label>
+    </div>
+
+    <.input field={f[:name]} label="Nome / nome artístico" required autocomplete="name" />
+
+    <.input
+      field={f[:whatsapp]}
+      type="tel"
+      label="WhatsApp (DDD + número)"
+      required
+      inputmode="numeric"
+      autocomplete="off"
+      placeholder="22999998888"
+    />
+
+    <.input
+      field={f[:instagram]}
+      type="text"
+      label="Instagram (sem o @)"
+      required
+      autocomplete="off"
+      placeholder="seu.usuario"
+    />
+
+    <.input
+      field={f[:musical_styles]}
+      type="textarea"
+      label="Estilos que você toca"
+      rows="2"
+      required
+    />
+
+    <.input
+      field={f[:about]}
+      type="textarea"
+      label="Sobre você (+ link do set, se tiver)"
+      rows="3"
+      required
+    />
+
+    <.button type="submit" variant={:primary} class="btn--block">Enviar inscrição</.button>
+  </.form>
+</Layouts.app>

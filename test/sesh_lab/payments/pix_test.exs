@@ -25,7 +25,7 @@ defmodule SeshLab.Payments.PixTest do
 
   defp parse_tlv(<<id::binary-size(2), len_bin::binary-size(2), rest::binary>>) do
     len = String.to_integer(len_bin)
-    <<value::binary-size(len), tail::binary>> = rest
+    <<value::binary-size(^len), tail::binary>> = rest
     [{id, value} | parse_tlv(tail)]
   end
 

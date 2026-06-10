@@ -1,5 +1,5 @@
 // Client-side order history. No backend: order ids are capability URLs
-// (UUIDv4 at /pedido/:id, which already renders status + PIX). We just
+// (UUIDv4 at /compra/:id, which already renders status + PIX). We just
 // remember the ids THIS device created so the customer can return to them
 // without bookmarking. Mirrors the localStorage pattern in storage.js.
 
@@ -19,7 +19,7 @@ function write(list) {
   localStorage.setItem(KEY, JSON.stringify(list.slice(0, MAX)));
 }
 
-// Record the order rendered on the current /pedido/:id page. Idempotent —
+// Record the order rendered on the current /compra/:id page. Idempotent —
 // revisiting an order moves it to the top instead of duplicating.
 export function bindOrderRecord() {
   const el = document.querySelector("[data-order-record]");
@@ -51,7 +51,7 @@ export function renderOrderHistory() {
 
   for (const o of list) {
     const a = document.createElement("a");
-    a.href = `/pedido/${encodeURIComponent(o.id)}`;
+    a.href = `/compra/${encodeURIComponent(o.id)}`;
     a.className = "card row space-between align-center";
 
     const label = document.createElement("span");

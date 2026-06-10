@@ -31,4 +31,17 @@ defmodule SeshLab.Tickets.Ticket do
 
   def display_code(<<a::binary-size(4), b::binary-size(4)>>), do: a <> "-" <> b
   def display_code(code) when is_binary(code), do: code
+
+  @doc """
+  QR do ingresso como SVG. Codifica o código cru de 8 chars (não URL) → QR
+  versão 1, módulos grandes. Escuro-sobre-claro pro leitor da porta.
+  """
+  @spec qr_svg(t() | String.t()) :: String.t()
+  def qr_svg(%__MODULE__{code: code}), do: qr_svg(code)
+
+  def qr_svg(code) when is_binary(code) do
+    code
+    |> EQRCode.encode()
+    |> EQRCode.svg(width: 220, color: "#05070A", background_color: "#FFFFFF")
+  end
 end

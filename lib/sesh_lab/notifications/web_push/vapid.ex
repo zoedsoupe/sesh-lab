@@ -75,7 +75,7 @@ defmodule SeshLab.Notifications.WebPush.Vapid do
     do: extract_rs(rest, r_len)
 
   defp extract_rs(rest, r_len) do
-    <<r::binary-size(r_len), 0x02, s_len, s::binary-size(s_len)>> = rest
+    <<r::binary-size(^r_len), 0x02, s_len, s::binary-size(s_len)>> = rest
     pad32(trim_leading_zero(r)) <> pad32(trim_leading_zero(s))
   end
 

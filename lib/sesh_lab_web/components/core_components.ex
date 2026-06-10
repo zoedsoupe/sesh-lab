@@ -5,6 +5,9 @@ defmodule SeshLabWeb.CoreComponents do
   """
 
   use Phoenix.Component
+  use SeshLabWeb, :verified_routes
+
+  import Phoenix.HTML, only: [raw: 1]
 
   @doc """
   Botão simples. Variantes: `:primary` (padrão), `:ghost`, `:danger`.
@@ -134,10 +137,15 @@ defmodule SeshLabWeb.CoreComponents do
     """
   end
 
-  defp status_label(:pending), do: "aguardando"
-  defp status_label(:confirmed), do: "confirmado"
-  defp status_label(:cancelled), do: "cancelado"
-  defp status_label(:expired), do: "expirado"
+  # Order statuses
+  defp status_label(:pending), do: "Aguardando"
+  defp status_label(:confirmed), do: "Confirmado"
+  defp status_label(:cancelled), do: "Cancelado"
+  defp status_label(:expired), do: "Expirado"
+  # Edition statuses
+  defp status_label(:draft), do: "Rascunho"
+  defp status_label(:published), do: "Publicada"
+  defp status_label(:past), do: "Encerrada"
 
   @doc "Formata `total_cents` como `R$ 12,34`."
   @spec money(integer()) :: String.t()
@@ -145,6 +153,43 @@ defmodule SeshLabWeb.CoreComponents do
     reais = div(cents, 100)
     cents_part = abs(rem(cents, 100)) |> Integer.to_string() |> String.pad_leading(2, "0")
     "R$ #{reais},#{cents_part}"
+  end
+
+  # Inlined so the SVG resolves `currentColor` (SESH = --accent por edição) e os
+  # stops `var(--lab-*)` do gradiente do "LAB." — ambos quebram via <img>.
+  @sesh_logo_path Path.join(:code.priv_dir(:sesh_lab), "static/images/sesh-logo.svg")
+  @external_resource @sesh_logo_path
+  @sesh_logo_svg File.read!(@sesh_logo_path)
+
+  @doc """
+  Logo oficial da SESH (vetor de `Sesh Bandeira 3.svg`, sem o contorno
+  rosa-escuro). SESH usa `currentColor` (`--accent` por edição); "LAB." usa um
+  gradiente verde→ciano. Inline pra que `currentColor` resolva.
+
+  `src` (arte custom enviada por edição) renderiza como `<img>` cru — sem
+  recolor nem tema, só redimensiona. Nil/ausente → cai no vetor oficial.
+  """
+  attr :class, :string, default: nil
+  attr :src, :string, default: nil
+
+  def sesh_logo(%{src: src} = assigns) when is_binary(src) and src != "" do
+    ~H"""
+    <img src={@src} alt="SESH LAB." class={["sesh-logo sesh-logo--custom", @class]} />
+    """
+  end
+
+  def sesh_logo(assigns) do
+    # Unique gradient id per instance: two inline logos on one page (header +
+    # hero) would otherwise share id="lab-grad", and `url(#lab-grad)` resolves
+    # to the FIRST match — which is inside the display:none header on hero pages,
+    # so the LAB gradient renders empty. Unique-izing severs that cross-ref.
+    gid = "lab-grad-#{System.unique_integer([:positive])}"
+    svg = String.replace(@sesh_logo_svg, "lab-grad", gid)
+    assigns = assign(assigns, :svg, svg)
+
+    ~H"""
+    <span class={["sesh-logo", @class]}>{raw(@svg)}</span>
+    """
   end
 
   defp translate_error({msg, opts}) do
