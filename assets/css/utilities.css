@@ -1,0 +1,141 @@
+/* layout */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.stack-1 > * + * {
+  margin-top: var(--s-1);
+}
+.stack-2 > * + * {
+  margin-top: var(--s-2);
+}
+.stack-3 > * + * {
+  margin-top: var(--s-3);
+}
+.stack-4 > * + * {
+  margin-top: var(--s-4);
+}
+.stack-5 > * + * {
+  margin-top: var(--s-5);
+}
+.stack-6 > * + * {
+  margin-top: var(--s-6);
+}
+
+.block {
+  display: block;
+}
+.flex-1 {
+  flex: 1;
+}
+.space-between {
+  justify-content: space-between;
+}
+.align-center {
+  align-items: center;
+}
+.align-baseline {
+  align-items: baseline;
+}
+.gap-2 {
+  gap: var(--s-2);
+}
+.gap-3 {
+  gap: var(--s-3);
+}
+
+/* spacing */
+.p-3 {
+  padding: var(--s-3);
+}
+.p-4 {
+  padding: var(--s-4);
+}
+.mt-3 {
+  margin-top: var(--s-3);
+}
+
+/* type */
+.text-mono {
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
+}
+.text-sans {
+  font-family: var(--font-sans);
+}
+.text-xs {
+  font-size: var(--text-xs);
+}
+.text-sm {
+  font-size: var(--text-sm);
+}
+.text-base {
+  font-size: var(--text-base);
+}
+.text-lg {
+  font-size: var(--text-lg);
+}
+.text-xl {
+  font-size: var(--text-xl);
+}
+.text-2xl {
+  font-size: var(--text-2xl);
+}
+
+.text-fg {
+  color: var(--fg);
+}
+.text-muted {
+  color: var(--fg-muted);
+}
+.text-dim {
+  color: var(--fg-dim);
+}
+.text-accent {
+  color: var(--accent);
+}
+
+/* surfaces */
+.bg-base {
+  background: var(--bg);
+}
+.bg-surface {
+  background: var(--surface);
+}
+.bg-surface-2 {
+  background: var(--surface-2);
+}
+.border {
+  border: 1px solid var(--border);
+}
+
+/* state */
+.is-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.is-sold-out h2,
+.is-sold-out .text-mono {
+  text-decoration: line-through;
+  color: var(--fg-muted);
+}
+.is-sold-out {
+  opacity: 0.6;
+}
+
+/* subtle texture, opt-in */
+.scanlines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 3px,
+    rgba(255, 255, 255, 0.015) 3px,
+    rgba(255, 255, 255, 0.015) 4px
+  );
+}

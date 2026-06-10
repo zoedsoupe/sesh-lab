@@ -1,0 +1,35 @@
+# build artifacts
+_build/
+deps/
+*.beam
+
+# local sqlite databases
+*.db
+*.db-shm
+*.db-wal
+
+# node / assets cache (não usamos node, cobertura preventiva)
+assets/node_modules/
+
+# editor / OS
+.DS_Store
+.elixir_ls/
+.vscode/
+.idea/
+
+# git + meta
+.git/
+.gitignore
+.github/
+.claude/
+.expert/
+AGENTS.md
+README.md
+PROGRESS.md
+
+# tests + fixtures
+test/
+
+# fly cache
+.fly/
+fly.toml

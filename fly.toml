@@ -1,0 +1,48 @@
+# fly.io config for sesh-lab (Phoenix + sqlite, single machine).
+# Update PHX_HOST se trocar domínio depois.
+
+app = "sesh-lab"
+primary_region = "gru"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[deploy]
+  # Migrações rodam automaticamente via SeshLab.Application
+  # (Ecto.Migrator dispara no boot quando RELEASE_NAME está setado),
+  # sem release_command.
+  strategy = "immediate"
+
+[env]
+  PHX_HOST = "sesh-lab.fly.dev"
+  PORT = "4000"
+  PHX_SERVER = "true"
+  DATABASE_PATH = "/data/sesh.db"
+  POOL_SIZE = "5"
+
+[[mounts]]
+  source = "sesh_data"
+  destination = "/data"
+  initial_size = "1"
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  # sqlite => máquina única. Sem auto-scale horizontal.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 200
+    soft_limit = 150
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpus = 1
+
+# Health check omitido: edge da Fly já valida porta via [http_service].
+# Check explícito em "/" produz spam de 301 (Plug.SSL força HTTPS, internal
+# checks vêm sem X-Forwarded-Proto). Adicionar /health bypass se quiser.

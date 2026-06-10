@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="theme-color" content="#0a0a0a" />
+    <link rel="manifest" href={~p"/manifest.webmanifest"} />
+    <link rel="icon" href={~p"/images/mascara-192.png"} type="image/png" />
+    <link rel="apple-touch-icon" href={~p"/images/mascara-192.png"} />
+    <.live_title default="a.sesh.sesh">
+      {assigns[:page_title]}
+    </.live_title>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
+    </script>
+  </head>
+  <body class="bg-base text-fg text-sans">
+    {@inner_content}
+  </body>
+</html>

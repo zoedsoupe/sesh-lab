@@ -1,0 +1,110 @@
+<Layouts.app flash={@flash}>
+  <meta :if={@order.status == :pending} http-equiv="refresh" content="30" />
+  <div hidden data-order-record data-id={@order.id} data-label={order_label(@order)}></div>
+
+  <section class="stack-5">
+    <header class="stack-1">
+      <h1 class="text-xl text-mono">pedido</h1>
+      <.status_badge status={@order.status} />
+      <p class="text-xs text-dim">{status_message(@order.status)}</p>
+      <p :if={@order.promo_id} class="text-xs text-accent text-mono">
+        promo: {@order.promo_id}
+      </p>
+    </header>
+
+    <% lead = SeshLab.Orders.max_lead_time_days(@order) %>
+    <div :if={lead} class="alert alert--info" role="status">
+      <p class="text-xs">
+        este pedido tem itens de encomenda. prazo de até {lead} {if lead == 1,
+          do: "dia",
+          else: "dias"} após o pix confirmado.
+      </p>
+    </div>
+
+    <div
+      :if={@high_demand and @order.status == :pending}
+      class="alert alert--demand stack-2"
+      role="alert"
+      aria-live="polite"
+    >
+      <p class="text-lg">
+        <strong>A Sesh Está Com Alta Demanda.</strong>
+      </p>
+      <p class="text-base">
+        O Tempo De Confirmação Pode Variar. Obrigada Pela Paciência.
+      </p>
+    </div>
+
+    <ul class="stack-2">
+      <li :for={item <- @order.items} class="row space-between text-sm">
+        <span>
+          {item.quantity}× {item.product_name_snapshot}<span
+            :if={item.lead_time_days_snapshot}
+            class="text-xs text-dim"
+          >
+            · ~{item.lead_time_days_snapshot}d
+          </span>
+        </span>
+        <span class="text-mono">{money(item.unit_price_cents * item.quantity)}</span>
+      </li>
+    </ul>
+
+    <div :if={@order.discount_cents > 0} class="row space-between text-sm text-accent">
+      <span>cupom {@order.coupon_code}</span>
+      <span class="text-mono">- {money(@order.discount_cents)}</span>
+    </div>
+
+    <div class="row space-between total-line">
+      <span class="text-sm text-muted">total</span>
+      <span class="text-mono text-lg">{money(@order.total_cents)}</span>
+    </div>
+
+    <section :if={@earned != []} class="stack-2 alert alert--info">
+      <h2 class="text-sm text-muted">você ganhou um cupom</h2>
+      <ul class="stack-1">
+        <li :for={c <- @earned} class="row space-between text-sm">
+          <span class="text-mono">{c.code}</span>
+          <span class="text-xs text-dim">{coupon_label(c)}</span>
+        </li>
+      </ul>
+      <p class="text-xs text-dim">use no seu próximo pedido.</p>
+    </section>
+
+    <section
+      :if={@order.payment_method == :credito and @order.status == :pending}
+      class="alert alert--info stack-2"
+      role="status"
+    >
+      <p class="text-sm">
+        pagamento no crédito à vista. o link de pagamento será enviado por DM no instagram.
+      </p>
+    </section>
+
+    <section
+      :if={@order.payment_method == :dinheiro and @order.status == :pending}
+      class="alert alert--info stack-2"
+      role="status"
+    >
+      <p class="text-sm">
+        pagamento em dinheiro na retirada/entrega.
+      </p>
+    </section>
+
+    <section :if={@pix} class="stack-3 pix-block">
+      <h2 class="text-sm text-muted">pix</h2>
+      <div class="qr-frame" aria-label="qr code pix">
+        {Phoenix.HTML.raw(@pix.svg)}
+      </div>
+      <div class="stack-2">
+        <span class="text-xs text-dim">copia e cola</span>
+        <code class="pix-copy text-mono text-xs" id="pix-copy" data-pix-copy>{@pix.emv}</code>
+        <button type="button" class="btn btn--ghost btn--block" data-copy-target="#pix-copy">
+          copiar
+        </button>
+      </div>
+      <p class="text-base text-dim">A sesh foi notificada, espere a confirmação.</p>
+    </section>
+
+    <a href={~p"/"} class="btn btn--ghost btn--block">voltar à vitrine</a>
+  </section>
+</Layouts.app>
