@@ -6,12 +6,12 @@ defmodule SeshLab.Application do
   use Application
 
   # Captured at compile time — Mix isn't available at runtime in a release.
-  # Worker runs everywhere except test (where the hourly tick is unwanted).
-  @start_coupon_worker Mix.env() != :test
+  # Workers run everywhere except test (periodic ticks are unwanted there).
+  @start_workers Mix.env() != :test
 
   @impl true
   def start(_type, _args) do
-    SeshLab.Catalog.ensure_products_dir!()
+    SeshLab.Editions.ensure_uploads_dir!()
 
     children =
       [
@@ -22,7 +22,7 @@ defmodule SeshLab.Application do
         {DNSCluster, query: Application.get_env(:sesh_lab, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: SeshLab.PubSub},
         {Finch, name: SeshLab.WebPush.Finch}
-      ] ++ coupon_worker() ++ [SeshLabWeb.Endpoint]
+      ] ++ workers() ++ [SeshLabWeb.Endpoint]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
@@ -43,7 +43,9 @@ defmodule SeshLab.Application do
     System.get_env("RELEASE_NAME") == nil
   end
 
-  defp coupon_worker do
-    if @start_coupon_worker, do: [SeshLab.Coupons.ExpiryWorker], else: []
+  defp workers do
+    if @start_workers,
+      do: [SeshLab.Coupons.ExpiryWorker, SeshLab.Tickets.ExpiryWorker],
+      else: []
   end
 end

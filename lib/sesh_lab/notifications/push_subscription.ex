@@ -5,7 +5,7 @@ defmodule SeshLab.Notifications.PushSubscription do
   @type t :: %__MODULE__{}
 
   # Categories a client device can opt into. Admin subs ignore this.
-  @topics ~w(order_status promos coupons)
+  @topics ~w(order_status editions coupons)
   def topics, do: @topics
 
   schema "push_subscriptions" do

@@ -1,26 +1,18 @@
 defmodule SeshLab.CouponsTest do
   use SeshLab.DataCase, async: false
 
+  import SeshLab.Fixtures, only: [edition_fixture: 0]
+
   alias SeshLab.{Coupons, Repo}
   alias SeshLab.Coupons.Coupon
-  alias SeshLab.Orders.Order
 
   defp insert_order(attrs \\ %{}) do
-    defaults = %{
-      customer_name: "Diana",
-      customer_instagram: "diana",
-      delivery_type: :retirada,
-      payment_method: :pix,
-      total_cents: 10_000,
-      status: :pending
-    }
-
-    Repo.insert!(struct(%Order{}, Map.merge(defaults, attrs)))
+    SeshLab.Fixtures.insert_order(edition_fixture(), attrs)
   end
 
   defp insert_coupon(attrs) do
     defaults = %{
-      code: "RAD-TEST#{System.unique_integer([:positive])}",
+      code: "SESH-TEST#{System.unique_integer([:positive])}",
       scope: :public,
       discount_kind: :percent,
       discount_value: 10,
@@ -44,8 +36,8 @@ defmodule SeshLab.CouponsTest do
   end
 
   describe "generate_code/0" do
-    test "produces a RAD- prefixed code with safe alphabet" do
-      assert Coupons.generate_code() =~ ~r/^RAD-[A-HJ-NP-Z2-9]{4}$/
+    test "produces a SESH- prefixed code with safe alphabet" do
+      assert Coupons.generate_code() =~ ~r/^SESH-[A-HJ-NP-Z2-9]{4}$/
     end
   end
 
@@ -83,7 +75,7 @@ defmodule SeshLab.CouponsTest do
                  "discount_value" => "10"
                })
 
-      assert c.code =~ ~r/^RAD-/
+      assert c.code =~ ~r/^SESH-/
       assert c.scope == :public
     end
 

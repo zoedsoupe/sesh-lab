@@ -81,15 +81,21 @@ defmodule SeshLab.NotificationsTest do
 
   describe "notify_admin_*/_" do
     test "is a no-op when there are no subscriptions" do
-      order = %SeshLab.Orders.Order{
+      order = %SeshLab.Tickets.Order{
         id: "00000000-0000-0000-0000-000000000001",
         customer_name: "Fulano",
         total_cents: 1500,
         items: []
       }
 
+      type = %SeshLab.Editions.TicketType{
+        id: "00000000-0000-0000-0000-0000000000aa",
+        name: "Lote 1"
+      }
+
       assert :ok = Notifications.notify_admin_new_order(order)
-      assert :ok = Notifications.notify_admin_out_of_stock("brownie", "Brownie")
+      assert :ok = Notifications.notify_admin_soldout(type)
+      assert :ok = Notifications.notify_admin_dj_application(%{name: "DJ Fulano"})
     end
   end
 
@@ -130,9 +136,9 @@ defmodule SeshLab.NotificationsTest do
       {:ok, _} = Notifications.subscribe(attrs)
 
       assert {:ok, sub} =
-               Notifications.update_topics(attrs.endpoint, ["order_status", "promos"])
+               Notifications.update_topics(attrs.endpoint, ["order_status", "editions"])
 
-      assert Enum.sort(sub.topics) == ["order_status", "promos"]
+      assert Enum.sort(sub.topics) == ["editions", "order_status"]
     end
 
     test "update_topics/2 returns :not_found for unknown or admin endpoints", %{
@@ -140,14 +146,14 @@ defmodule SeshLab.NotificationsTest do
     } do
       {:ok, _} = Notifications.subscribe(Map.put(@valid_attrs, :audience, :admin))
 
-      assert {:error, :not_found} = Notifications.update_topics("https://nope/x", ["promos"])
+      assert {:error, :not_found} = Notifications.update_topics("https://nope/x", ["editions"])
       # endpoint exists but is an admin sub — not addressable as a client
-      assert {:error, :not_found} = Notifications.update_topics(client.endpoint, ["promos"])
+      assert {:error, :not_found} = Notifications.update_topics(client.endpoint, ["editions"])
     end
   end
 
   describe "notify_customer_order_update/1" do
-    alias SeshLab.Orders.Order
+    alias SeshLab.Tickets.Order
 
     test "no-ops when the order has no linked device" do
       assert :ok = Notifications.notify_customer_order_update(%Order{client_endpoint: nil})
@@ -164,7 +170,7 @@ defmodule SeshLab.NotificationsTest do
     end
 
     test "no-ops when the device opted out of order_status" do
-      attrs = Map.merge(@valid_attrs, %{audience: :client, topics: ["promos"]})
+      attrs = Map.merge(@valid_attrs, %{audience: :client, topics: ["editions"]})
       {:ok, _} = Notifications.subscribe(attrs)
 
       order = %Order{
@@ -174,12 +180,6 @@ defmodule SeshLab.NotificationsTest do
       }
 
       assert :ok = Notifications.notify_customer_order_update(order)
-    end
-  end
-
-  describe "notify_clients_promo/2" do
-    test "is a no-op when no device opted into promos" do
-      assert :ok = Notifications.notify_clients_promo("Cupom", "10% off")
     end
   end
 
@@ -208,15 +208,21 @@ defmodule SeshLab.NotificationsTest do
     end
   end
 
-  describe "announce_promo/1" do
-    test "accepts coupons as a valid topic" do
-      attrs = Map.merge(@valid_attrs, %{audience: :client, topics: ["promos", "coupons"]})
+  describe "announce_edition/1" do
+    test "accepts editions + coupons as valid topics" do
+      attrs = Map.merge(@valid_attrs, %{audience: :client, topics: ["editions", "coupons"]})
       assert {:ok, sub} = Notifications.subscribe(attrs)
-      assert Enum.sort(sub.topics) == ["coupons", "promos"]
+      assert Enum.sort(sub.topics) == ["coupons", "editions"]
     end
 
-    test "is a no-op when no device opted into promos" do
-      assert :ok = Notifications.announce_promo(%{name: "Combo Festa", total_cents: 8000})
+    test "is a no-op when no device opted into editions" do
+      edition = %SeshLab.Editions.Edition{
+        name: "SESH #1",
+        starts_at: DateTime.utc_now() |> DateTime.truncate(:second),
+        venue: "OCA ROOTS"
+      }
+
+      assert :ok = Notifications.announce_edition(edition)
     end
   end
 end

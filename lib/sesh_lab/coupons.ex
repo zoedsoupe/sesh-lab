@@ -16,7 +16,7 @@ defmodule SeshLab.Coupons do
 
   alias SeshLab.{Clock, Notifications, Repo}
   alias SeshLab.Coupons.{Coupon, CouponRule}
-  alias SeshLab.Orders.Order
+  alias SeshLab.Tickets.Order
 
   # Unambiguous alphabet (no I/L/O/0/1) for generated codes.
   @code_alphabet ~c"ABCDEFGHJKMNPQRSTUVWXYZ23456789"
@@ -194,9 +194,9 @@ defmodule SeshLab.Coupons do
 
   # ── Codes ───────────────────────────────────────────────────────────────────
 
-  @doc "Generates a unique `RAD-XXXX` code."
+  @doc "Generates a unique `SESH-XXXX` code."
   def generate_code do
-    code = "RAD-" <> random_suffix(4)
+    code = "SESH-" <> random_suffix(4)
     if Repo.exists?(from c in Coupon, where: c.code == ^code), do: generate_code(), else: code
   end
 
@@ -237,8 +237,5 @@ defmodule SeshLab.Coupons do
 
   defp check_uses(_), do: :ok
 
-  defp normalize_ig(nil), do: nil
-
-  defp normalize_ig(handle),
-    do: handle |> String.trim() |> String.trim_leading("@") |> String.downcase()
+  defp normalize_ig(value), do: Order.normalize_handle(value)
 end

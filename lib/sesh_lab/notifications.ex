@@ -12,7 +12,8 @@ defmodule SeshLab.Notifications do
   require Logger
 
   alias SeshLab.{Clock, Repo}
-  alias SeshLab.Orders.Order
+  alias SeshLab.Editions.{Edition, TicketType}
+  alias SeshLab.Tickets.Order
   alias SeshLab.Notifications.{PushSubscription, WebPush}
 
   # ── Subscriptions ──────────────────────────────────────────────────────────
@@ -81,23 +82,33 @@ defmodule SeshLab.Notifications do
       "id" => order.id,
       "n" => first_name(order.customer_name),
       "v" => format_money(order.total_cents),
-      "q" => length(order.items || []),
+      "q" => Enum.sum(Enum.map(order.items || [], & &1.quantity)),
       "url" => "/admin/pedidos/#{order.id}"
     }
 
     fanout(payload, audience: :admin, urgency: "high", topic: "order-" <> short_id(order.id))
   end
 
-  @spec notify_admin_out_of_stock(product_id :: String.t(), product_name :: String.t()) :: :ok
-  def notify_admin_out_of_stock(product_id, product_name) do
+  @spec notify_admin_soldout(TicketType.t()) :: :ok
+  def notify_admin_soldout(%TicketType{} = type) do
     payload = %{
-      "t" => "oos",
-      "p" => product_id,
-      "name" => product_name,
-      "url" => "/admin/produtos/#{product_id}"
+      "t" => "soldout",
+      "name" => type.name,
+      "url" => "/admin"
     }
 
-    fanout(payload, audience: :admin, urgency: "normal", topic: "oos-#{product_id}")
+    fanout(payload, audience: :admin, urgency: "normal", topic: "soldout-" <> short_id(type.id))
+  end
+
+  @spec notify_admin_dj_application(%{name: String.t()}) :: :ok
+  def notify_admin_dj_application(%{name: name}) do
+    payload = %{
+      "t" => "dj_application",
+      "n" => first_name(name),
+      "url" => "/admin/tocar"
+    }
+
+    fanout(payload, audience: :admin, urgency: "normal")
   end
 
   # ── Customer notifications ─────────────────────────────────────────────────
@@ -116,7 +127,7 @@ defmodule SeshLab.Notifications do
         "t" => "order_status",
         "id" => order.id,
         "s" => to_string(status),
-        "url" => "/pedido/#{order.id}"
+        "url" => "/compra/#{order.id}"
       }
 
       Task.start(fn ->
@@ -147,16 +158,15 @@ defmodule SeshLab.Notifications do
 
   def notify_coupon_expiring(_), do: :ok
 
-  @doc "Announces a newly-created active promo to every `promos`-opted client."
-  @spec announce_promo(%{name: String.t(), total_cents: integer()}) :: :ok
-  def announce_promo(%{name: name, total_cents: total}) do
-    notify_clients_promo("nova promo", "#{name} por R$ #{format_money(total)}")
-  end
-
-  @doc "Broadcasts a promo push to every client device opted into `promos`."
-  @spec notify_clients_promo(title :: String.t(), body :: String.t()) :: :ok
-  def notify_clients_promo(title, body) do
-    broadcast_to_topic("promos", %{"t" => "promo", "title" => title, "body" => body, "url" => "/"})
+  @doc "Anuncia uma edição recém-publicada a todo cliente opt-in em `editions`."
+  @spec announce_edition(Edition.t()) :: :ok
+  def announce_edition(%Edition{} = edition) do
+    broadcast_to_topic("editions", %{
+      "t" => "edition",
+      "title" => "#{edition.name} anunciada",
+      "body" => "#{Clock.format(edition.starts_at, :date)} — #{edition.venue}",
+      "url" => "/"
+    })
   end
 
   @doc "Announces a newly-created public coupon to every `coupons`-opted client."
@@ -170,7 +180,7 @@ defmodule SeshLab.Notifications do
     body = "use #{code} — #{discount_label(kind, value)}#{expiry_suffix(exp)}"
 
     broadcast_to_topic("coupons", %{
-      "t" => "promo",
+      "t" => "coupon",
       "title" => "novo cupom",
       "body" => body,
       "url" => "/"
