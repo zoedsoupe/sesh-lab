@@ -28,7 +28,7 @@ import { registerServiceWorker } from "./pwa";
 import { bindPushToggle } from "./push";
 import { bindOrderRecord, renderOrderHistory } from "./orders";
 import {
-  bindVitrinePrompt,
+  bindPostPurchasePrompt,
   bindAvisosToggle,
   bindOrderEndpoint,
 } from "./client_push";
@@ -91,7 +91,7 @@ function init() {
   bindPushToggle();
   bindOrderRecord();
   renderOrderHistory();
-  bindVitrinePrompt();
+  bindPostPurchasePrompt();
   bindAvisosToggle();
   bindOrderEndpoint();
   bindVitrineStream();

@@ -2,8 +2,9 @@
 // opt-in by topic. Server endpoints live under /push/ via the :client_api
 // pipeline, which keeps CSRF on — so writes send the x-csrf-token header.
 //
-// Used by: the vitrine soft-prompt, the /avisos config panel, and the order
-// form (injects the device endpoint so confirm/cancel can notify this device).
+// Used by: the post-purchase soft-prompt (order page), the /avisos config
+// panel, and the order form (injects the device endpoint so confirm/cancel can
+// notify this device).
 
 const VAPID_URL = "/push/vapid-key";
 const SUB_URL = "/push/subscribe";
@@ -96,9 +97,11 @@ async function fetchTopics() {
 // ── DOM bindings ────────────────────────────────────────────────────────────
 
 // Soft pre-prompt: a dismissible bar injected into [data-push-prompt] on the
-// vitrine. The real permission prompt only fires on the user's tap (browsers
-// block/deny prompts not tied to a gesture). Dismissal is remembered.
-export async function bindVitrinePrompt() {
+// order page (post-purchase — peak intent). The real permission prompt only
+// fires on the user's tap (browsers block/deny prompts not tied to a gesture).
+// Dismissal is remembered. Enabling opts into this order's status ping plus
+// future editions/coupons — the actual value of allowing notifications.
+export async function bindPostPurchasePrompt() {
   const mount = document.querySelector("[data-push-prompt]");
   if (!mount) return;
   if (localStorage.getItem(DISMISS_KEY) === "1") return;
@@ -113,7 +116,8 @@ export async function bindVitrinePrompt() {
 
   const text = document.createElement("span");
   text.className = "text-base";
-  text.textContent = "Quer ser avisado quando seu pedido for confirmado?";
+  text.textContent =
+    "Te avisamos quando seu PIX cair — e das próximas edições e cupons em primeira mão.";
 
   const actions = document.createElement("div");
   actions.className = "row gap-2 align-center";
@@ -125,7 +129,7 @@ export async function bindVitrinePrompt() {
   yes.addEventListener("click", async () => {
     yes.disabled = true;
     try {
-      await enable();
+      await enable(["order_status", "editions", "coupons"]);
       mount.replaceChildren();
     } catch (e) {
       console.warn("[push] enable failed", e);

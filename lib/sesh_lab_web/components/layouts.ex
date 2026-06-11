@@ -17,29 +17,15 @@ defmodule SeshLabWeb.Layouts do
           <.sesh_logo />
         </a>
         <nav class="site-nav row gap-3 align-center">
-          <a href={~p"/meus-ingressos"}>meus ingressos</a>
-          <a href={~p"/tocar"}>quer tocar?</a>
+          <a href={~p"/meus-ingressos"}>ingressos</a>
+          <a href={~p"/sobre"}>sobre</a>
+          <a href={~p"/avisos"}>avisos</a>
         </nav>
       </header>
 
       <main class="site-main">
         {render_slot(@inner_block)}
       </main>
-
-      <footer class="site-footer">
-        <nav class="site-footer-nav">
-          <a href={~p"/sobre"}>sobre</a>
-          <a href={~p"/avisos"}>avisos</a>
-          <a
-            href="https://www.instagram.com/coletivo.sesh/"
-            target="_blank"
-            rel="noopener"
-            class="site-footer-ig"
-          >
-            @coletivo.sesh
-          </a>
-        </nav>
-      </footer>
 
       <.flash_group flash={@flash} />
     </div>

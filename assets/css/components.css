@@ -9,9 +9,10 @@
   gap: var(--s-6);
 }
 
-/* Quando há botão flutuante, reserva espaço pra última seção não ficar sob ele. */
-body:has(.btn--float) .shell {
-  padding-bottom: calc(var(--s-7) + 4.5rem + env(safe-area-inset-bottom, 0px));
+/* Dock/botão flutuante: reserva espaço pra última seção não ficar sob ele. */
+body:has(.btn--float) .shell,
+body:has(.cta-dock) .shell {
+  padding-bottom: calc(var(--s-7) + 7rem + env(safe-area-inset-bottom, 0px));
 }
 
 .shell--admin {
@@ -154,40 +155,6 @@ body:has(.sesh-logo--hero) .brand {
 
 .site-main {
   flex: 1;
-}
-
-.site-footer {
-  padding-top: var(--s-4);
-  border-top: 1px solid var(--border);
-  color: var(--fg-dim);
-}
-
-.site-footer p + p {
-  margin-top: var(--s-2);
-}
-
-.site-footer-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-3) var(--s-4);
-  align-items: center;
-}
-.site-footer-nav a {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--fg-muted);
-}
-.site-footer-nav a:hover,
-.site-footer-nav a:focus-visible {
-  color: var(--accent);
-}
-/* Instagram = empurrado pra direita, em accent (acesso fácil em toda página) */
-.site-footer-ig {
-  margin-left: auto;
-  color: var(--accent) !important;
-  text-shadow: 0 0 8px var(--accent-glow);
 }
 
 /* card */
@@ -463,6 +430,21 @@ body:has(.sesh-logo--hero) .brand {
   width: 100%;
 }
 
+/* accent-outline CTA: alto o bastante pra recrutar (DJs, contato) sem roubar o
+   blob primário. Glow neon (tema Y2K), preenche no hover. */
+.btn--accent {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+.btn--accent:hover,
+.btn--accent:focus-visible {
+  background: var(--accent);
+  /* bate o global `a:hover { color: --accent }` (mesma cor do fill → texto sumia) */
+  color: #05070a;
+  border-color: var(--accent);
+}
+
 .btn--float {
   position: fixed;
   left: 50%;
@@ -480,20 +462,48 @@ body:has(.sesh-logo--hero) .brand {
   -webkit-backdrop-filter: blur(8px);
 }
 
+/* floating action dock — dois CTAs persistentes numa só barra: ingresso (blob,
+   primário) + tocar (accent, recrutar DJs). Painel borrado pra legibilidade. */
+.cta-dock {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--s-4) + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 50;
+  width: calc(100% - var(--s-4) * 2);
+  max-width: calc(var(--container) - var(--s-4) * 2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-2);
+  border-radius: var(--radius-lg);
+  background: rgba(5, 7, 10, 0.72);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.cta-dock .btn {
+  width: 100%;
+}
+
 @media (min-width: 640px) {
-  .btn--float {
+  .btn--float,
+  .cta-dock {
     max-width: calc(34rem - var(--s-5) * 2);
   }
 }
 
 @media (min-width: 960px) {
-  .btn--float {
+  .btn--float,
+  .cta-dock {
     max-width: calc(42rem - var(--s-6) * 2);
   }
 }
 
 @media (min-width: 1280px) {
-  .btn--float {
+  .btn--float,
+  .cta-dock {
     max-width: calc(48rem - var(--s-7) * 2);
   }
 }
@@ -1207,8 +1217,18 @@ body::after {
   color: var(--fg);
   text-transform: uppercase;
 }
+.lineup {
+  columns: 2;
+  column-gap: var(--s-5);
+}
 .lineup li {
   letter-spacing: 0.04em;
+  break-inside: avoid;
+}
+@media (max-width: 28rem) {
+  .lineup {
+    columns: 1;
+  }
 }
 
 /* ticket card — wirebox holding the white QR panel */
@@ -1318,7 +1338,7 @@ body::after {
 /* ── SESH official logo (inline SVG; SESH=currentColor, LAB=gradient) ─────── */
 .sesh-logo {
   display: block;
-  height: 1.75rem;
+  height: 2.25rem;
   /* SESH (currentColor) tinge com o accent da edição */
   color: var(--accent);
 }
@@ -1334,14 +1354,22 @@ body::after {
   object-fit: contain;
 }
 .sesh-logo--sm {
-  height: 1.25rem;
+  height: 1.5rem;
 }
+/* hero logo carrega a marca — grande de propósito. Aspect ~2:1 (viewBox
+   720×356), então 7rem de altura ≈ 14rem de largura: cabe folgado no container
+   de 26rem. svg{max-width:100%} (tokens) já barra overflow em telas menores. */
 .sesh-logo--hero {
-  height: 4.5rem;
+  height: 7rem;
   /* left-aligned like every other logo. The official logo is a block <span>
      (full width → SVG sits left); custom uploads are <img> (intrinsic width),
      so pin them left too instead of centering. */
   margin-inline: 0;
+}
+@media (min-width: 640px) {
+  .sesh-logo--hero {
+    height: 9rem;
+  }
 }
 .sesh-logo--custom {
   margin-inline-end: auto;
