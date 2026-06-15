@@ -19,7 +19,6 @@ defmodule SeshLab.Tickets.Order do
     field :total_cents, :integer
     field :coupon_code, :string
     field :discount_cents, :integer, default: 0
-    field :expires_at, :utc_datetime
     field :pix_key, :string
     # Push endpoint of the device that placed the order (for status notifications).
     field :client_endpoint, :string
@@ -31,7 +30,7 @@ defmodule SeshLab.Tickets.Order do
   end
 
   @castable ~w(edition_id customer_name customer_instagram total_cents coupon_code
-               discount_cents expires_at status pix_key client_endpoint)a
+               discount_cents status pix_key client_endpoint)a
   @required ~w(edition_id customer_name customer_instagram total_cents)a
 
   def changeset(order, attrs) do

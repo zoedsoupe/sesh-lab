@@ -3,9 +3,9 @@ defmodule SeshLab.Editions.TicketType do
   Lote de ingresso de uma edição ("Lote 1", "Lista Amiga", "Porta").
 
   `capacity` é o total histórico (imutável pra estatística); `available` é o
-  contador decrementado atomicamente na reserva — mesmo papel do `stock` no
-  cozinha_radioativa. Ajustar `capacity` no admin propaga o delta pro
-  `available` (nunca abaixo de zero).
+  contador decrementado atomicamente na confirmação do pagamento
+  (`Tickets.confirm_order/2`) — pedido pendente não segura lugar. Ajustar
+  `capacity` no admin propaga o delta pro `available` (nunca abaixo de zero).
   """
 
   use Ecto.Schema

@@ -8,7 +8,7 @@ defmodule SeshLab.TicketsTest do
   alias SeshLab.Tickets.{Order, Ticket}
 
   describe "create_order/1" do
-    test "reserves capacity and snapshots items" do
+    test "creates a pending order and snapshots items without holding capacity" do
       {edition, lot} = edition_with_lot(%{}, %{capacity: 5, price_cents: 1500})
 
       assert {:ok, %Order{} = order} =
@@ -18,8 +18,8 @@ defmodule SeshLab.TicketsTest do
 
       assert order.status == :pending
       assert order.total_cents == 3000
-      assert order.expires_at
-      assert Repo.get!(TicketType, lot.id).available == 3
+      # Pending holds nothing — capacity only drops at confirm.
+      assert Repo.get!(TicketType, lot.id).available == 5
 
       [item] = Repo.preload(order, :items).items
       assert item.quantity == 2
@@ -32,7 +32,7 @@ defmodule SeshLab.TicketsTest do
       assert {:error, :empty_cart} = Tickets.create_order(%{edition_id: edition.id, items: []})
     end
 
-    test "rejects quantity beyond capacity" do
+    test "soft-rejects quantity beyond available capacity" do
       {edition, lot} = edition_with_lot(%{}, %{capacity: 1})
 
       assert {:error, {:sold_out, id}} =
@@ -67,6 +67,9 @@ defmodule SeshLab.TicketsTest do
       assert {:ok, confirmed} = Tickets.confirm_order(order.id)
       assert confirmed.status == :confirmed
 
+      # Capacity is claimed here, not at create.
+      assert Repo.get!(TicketType, lot.id).available == 2
+
       tickets = Repo.all(Ticket)
       assert length(tickets) == 3
       assert Enum.all?(tickets, &(&1.edition_id == edition.id))
@@ -80,6 +83,22 @@ defmodule SeshLab.TicketsTest do
       {:ok, _} = Tickets.confirm_order(order.id)
 
       assert {:error, :not_pending} = Tickets.confirm_order(order.id)
+    end
+
+    test "two pending orders for the last seat: second confirm is sold_out" do
+      {edition, lot} = edition_with_lot(%{}, %{capacity: 1})
+
+      {:ok, first} = Tickets.create_order(order_attrs(edition, lot))
+      {:ok, second} = Tickets.create_order(order_attrs(edition, lot))
+
+      assert {:ok, _} = Tickets.confirm_order(first.id)
+      assert {:error, {:sold_out, id}} = Tickets.confirm_order(second.id)
+      assert id == lot.id
+
+      # Failed confirm leaves no tickets and keeps the order pending.
+      assert Repo.get!(Order, second.id).status == :pending
+      assert Repo.aggregate(Ticket, :count, :id) == 1
+      assert Repo.get!(TicketType, lot.id).available == 0
     end
 
     test "retries on a code collision" do
@@ -137,7 +156,7 @@ defmodule SeshLab.TicketsTest do
   end
 
   describe "cancel_order/1" do
-    test "pending cancel restores capacity" do
+    test "pending cancel only changes status (held no capacity)" do
       {edition, lot} = edition_with_lot(%{}, %{capacity: 5})
 
       {:ok, order} =
@@ -145,51 +164,28 @@ defmodule SeshLab.TicketsTest do
           order_attrs(edition, lot, %{items: [%{ticket_type_id: lot.id, quantity: 2}]})
         )
 
-      assert Repo.get!(TicketType, lot.id).available == 3
-      assert {:ok, _} = Tickets.cancel_order(order.id)
+      assert Repo.get!(TicketType, lot.id).available == 5
+      assert {:ok, cancelled} = Tickets.cancel_order(order.id)
+      assert cancelled.status == :cancelled
       assert Repo.get!(TicketType, lot.id).available == 5
     end
 
-    test "confirmed cancel deletes tickets so the door reads not_found" do
-      {edition, lot} = edition_with_lot()
-      {:ok, order} = Tickets.create_order(order_attrs(edition, lot))
+    test "confirmed cancel restores capacity and deletes tickets" do
+      {edition, lot} = edition_with_lot(%{}, %{capacity: 5})
+
+      {:ok, order} =
+        Tickets.create_order(
+          order_attrs(edition, lot, %{items: [%{ticket_type_id: lot.id, quantity: 2}]})
+        )
+
       {:ok, _} = Tickets.confirm_order(order.id)
-      [ticket] = Repo.all(Ticket)
+      assert Repo.get!(TicketType, lot.id).available == 3
+      [ticket | _] = Repo.all(Ticket)
 
       assert {:ok, _} = Tickets.cancel_order(order.id)
       assert Repo.all(Ticket) == []
-      assert {:error, :not_found} = Tickets.validate_ticket(ticket.code)
-    end
-  end
-
-  describe "expire_pending/1" do
-    test "expires stale pending orders and restores capacity" do
-      {edition, lot} = edition_with_lot(%{}, %{capacity: 5})
-
-      {:ok, order} =
-        Tickets.create_order(
-          order_attrs(edition, lot, %{items: [%{ticket_type_id: lot.id, quantity: 2}]})
-        )
-
-      # Force the order past its TTL.
-      past = DateTime.add(DateTime.utc_now(), -60) |> DateTime.truncate(:second)
-      Repo.update_all(from(o in Order, where: o.id == ^order.id), set: [expires_at: past])
-
-      assert Tickets.expire_pending() == 1
-      assert Repo.get!(Order, order.id).status == :expired
       assert Repo.get!(TicketType, lot.id).available == 5
-    end
-
-    test "does not touch a confirmed order even if expires_at is in the past" do
-      {edition, lot} = edition_with_lot()
-      {:ok, order} = Tickets.create_order(order_attrs(edition, lot))
-      {:ok, _} = Tickets.confirm_order(order.id)
-
-      past = DateTime.add(DateTime.utc_now(), -60) |> DateTime.truncate(:second)
-      Repo.update_all(from(o in Order, where: o.id == ^order.id), set: [expires_at: past])
-
-      assert Tickets.expire_pending() == 0
-      assert Repo.get!(Order, order.id).status == :confirmed
+      assert {:error, :not_found} = Tickets.validate_ticket(ticket.code)
     end
   end
 
@@ -224,7 +220,8 @@ defmodule SeshLab.TicketsTest do
       assert stats.capacity == 10
       assert stats.sold_confirmed == 2
       assert stats.held_pending == 3
-      assert stats.available == 5
+      # Pending no longer subtracts from available — only confirmed does.
+      assert stats.available == 8
       assert stats.validated == 1
     end
   end

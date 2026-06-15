@@ -45,7 +45,7 @@ defmodule SeshLab.Application do
 
   defp workers do
     if @start_workers,
-      do: [SeshLab.Coupons.ExpiryWorker, SeshLab.Tickets.ExpiryWorker],
+      do: [SeshLab.Coupons.ExpiryWorker],
       else: []
   end
 end

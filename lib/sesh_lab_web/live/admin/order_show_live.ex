@@ -28,7 +28,13 @@ defmodule SeshLabWeb.Admin.OrderShowLive do
       {:error, :not_pending} ->
         {:noreply,
          socket
-         |> put_flash(:error, "pedido não está mais pendente (expirou ou foi cancelado).")
+         |> put_flash(:error, "pedido não está mais pendente (foi cancelado ou já confirmado).")
+         |> reload()}
+
+      {:error, {:sold_out, _id}} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "ingressos esgotaram antes da confirmação. pedido segue pendente.")
          |> reload()}
 
       {:error, _} ->
@@ -90,10 +96,6 @@ defmodule SeshLabWeb.Admin.OrderShowLive do
           <div class="row space-between">
             <dt class="text-muted">recebido</dt>
             <dd class="text-mono text-xs">{Clock.format(@order.inserted_at, :datetime)}</dd>
-          </div>
-          <div :if={@order.status == :pending and @order.expires_at} class="row space-between">
-            <dt class="text-muted">expira</dt>
-            <dd class="text-mono text-xs">{Clock.format(@order.expires_at, :datetime)}</dd>
           </div>
         </dl>
 

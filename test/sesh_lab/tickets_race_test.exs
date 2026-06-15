@@ -13,18 +13,27 @@ defmodule SeshLab.TicketsRaceTest do
   alias SeshLab.Editions.TicketType
   alias SeshLab.Tickets.{Order, Ticket}
 
-  test "N concurrent buyers over K capacity: exactly K succeed" do
+  test "N concurrent confirmations over K capacity: exactly K succeed" do
     capacity = 3
     callers = 12
     {edition, lot} = edition_with_lot(%{}, %{capacity: capacity})
+
+    # Pending orders hold nothing, so all N can be created; the race is at
+    # confirm time, where the atomic decrement decides exactly K winners.
+    orders =
+      for _ <- 1..callers do
+        {:ok, order} = Tickets.create_order(order_attrs(edition, lot))
+        order
+      end
+
     parent = self()
 
     results =
-      1..callers
-      |> Enum.map(fn _ ->
+      orders
+      |> Enum.map(fn order ->
         Task.async(fn ->
           Ecto.Adapters.SQL.Sandbox.allow(Repo, parent, self())
-          Tickets.create_order(order_attrs(edition, lot))
+          Tickets.confirm_order(order.id)
         end)
       end)
       |> Task.await_many(5_000)
@@ -35,7 +44,7 @@ defmodule SeshLab.TicketsRaceTest do
     assert successes == capacity
     assert soldout == callers - capacity
     assert Repo.get!(TicketType, lot.id).available == 0
-    assert Repo.aggregate(Order, :count, :id) == capacity
+    assert Repo.aggregate(Ticket, :count, :id) == capacity
   end
 
   test "two scanners on the same ticket: exactly one validation wins" do

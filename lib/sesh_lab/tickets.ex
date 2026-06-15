@@ -2,13 +2,16 @@ defmodule SeshLab.Tickets do
   @moduledoc """
   Pedidos e ingressos. Coração da concorrência de capacidade.
 
-  `create_order/1` usa `Ecto.Multi` com `update_all` condicional
-  (`where available >= quantity`) — em SQLite o write lock global torna isso
-  atômico e elimina race condition sem `SELECT FOR UPDATE`.
+  Evento pequeno, confirmação manual via Instagram — pedido pendente **não**
+  segura capacidade. A baixa de `available` acontece só na confirmação do
+  pagamento (`confirm_order/2`), via `update_all` condicional
+  (`where available >= quantity`): em SQLite o write lock global torna isso
+  atômico e elimina race condition sem `SELECT FOR UPDATE`. Sem reserva, sem
+  TTL, sem sweep de expiração.
 
-  Toda transição de status que sai de `:pending` (confirmar, cancelar,
-  expirar) é um `update_all` com guarda de status + checagem de rows
-  afetadas, então admin confirmando e o sweep de expiração nunca brigam.
+  Toda transição de status que sai de `:pending` (confirmar, cancelar) é um
+  `update_all` com guarda de status + checagem de rows afetadas, então dois
+  admins agindo no mesmo pedido nunca brigam.
 
   Ingressos só existem após confirmação — a validação na porta
   (`validate_ticket/1`) opera numa tabela só, também via `update_all` atômico,
@@ -21,9 +24,6 @@ defmodule SeshLab.Tickets do
   alias SeshLab.Editions.TicketType
   alias SeshLab.Tickets.{Order, OrderItem, Ticket}
   alias Ecto.Multi
-
-  # Tempo que um pedido pendente segura capacidade até o PIX cair.
-  @pending_ttl_minutes 45
 
   # Crockford base32: sem I, L, O, U — nada de ambiguidade na porta.
   @code_alphabet ~c"0123456789ABCDEFGHJKMNPQRSTVWXYZ"
@@ -60,10 +60,8 @@ defmodule SeshLab.Tickets do
               |> put_attr(:total_cents, subtotal - discount)
               |> put_attr(:coupon_code, coupon && coupon.code)
               |> put_attr(:discount_cents, discount)
-              |> put_attr(:expires_at, DateTime.add(Clock.now_utc(), @pending_ttl_minutes * 60))
 
             Multi.new()
-            |> reserve_capacity(items, types)
             |> Multi.insert(:order, Order.changeset(%Order{}, order_attrs))
             |> Multi.insert_all(:items, OrderItem, fn %{order: order} ->
               Enum.map(items, &item_attrs(&1, order, types))
@@ -138,18 +136,23 @@ defmodule SeshLab.Tickets do
 
   defp validate_items([], _), do: {:error, :empty_cart}
 
+  # Soft gate at order time (good UX): reject obvious sold-out / closed lots.
+  # Não é autoritativo — dois pendentes podem passar no mesmo último lugar; a
+  # baixa atômica em `confirm_order/2` é quem decide de verdade.
   defp validate_items(items, types) do
     now = Clock.now_utc()
 
-    Enum.reduce_while(items, :ok, fn %{ticket_type_id: id}, _ ->
+    Enum.reduce_while(items, :ok, fn %{ticket_type_id: id, quantity: q}, _ ->
       case Map.get(types, id) do
         nil ->
           {:halt, {:error, {:unknown_ticket_type, id}}}
 
         %TicketType{} = type ->
-          if TicketType.on_sale?(type, now),
-            do: {:cont, :ok},
-            else: {:halt, {:error, {:not_on_sale, id}}}
+          cond do
+            not TicketType.on_sale?(type, now) -> {:halt, {:error, {:not_on_sale, id}}}
+            type.available < q -> {:halt, {:error, {:sold_out, id}}}
+            true -> {:cont, :ok}
+          end
       end
     end)
   end
@@ -157,26 +160,6 @@ defmodule SeshLab.Tickets do
   defp total_cents(items, types) do
     Enum.reduce(items, 0, fn %{ticket_type_id: id, quantity: q}, acc ->
       acc + types[id].price_cents * q
-    end)
-  end
-
-  # Atomic conditional decrement; carries post-decrement `remaining` so
-  # `handle_result/1` can fire a soldout notification when it hits 0.
-  defp reserve_capacity(multi, items, types) do
-    Enum.reduce(items, multi, fn %{ticket_type_id: id, quantity: q}, multi ->
-      type = types[id]
-
-      Multi.run(multi, {:reserve, id}, fn repo, _ ->
-        query =
-          from t in TicketType,
-            where: t.id == ^id and t.available >= ^q and t.is_active,
-            select: t.available
-
-        case repo.update_all(query, inc: [available: -q]) do
-          {1, [remaining]} -> {:ok, %{ticket_type: type, remaining: remaining}}
-          {0, _} -> {:error, {:sold_out, id}}
-        end
-      end)
     end)
   end
 
@@ -193,16 +176,11 @@ defmodule SeshLab.Tickets do
     }
   end
 
-  defp handle_result({:ok, %{order: order} = results}) do
+  defp handle_result({:ok, %{order: order}}) do
     broadcast(:new_order, order.id)
     Notifications.notify_admin_new_order(order)
-    detect_soldout(results)
     Coupons.issue_for_order(order)
     {:ok, order}
-  end
-
-  defp handle_result({:error, {:reserve, id}, {:sold_out, id}, _changes}) do
-    {:error, {:sold_out, id}}
   end
 
   defp handle_result({:error, :claim_coupon, :coupon_taken, _}),
@@ -211,30 +189,26 @@ defmodule SeshLab.Tickets do
   defp handle_result({:error, :order, %Ecto.Changeset{} = cs, _}), do: {:error, cs}
   defp handle_result({:error, _step, reason, _}), do: {:error, reason}
 
-  defp detect_soldout(results) do
-    Enum.each(results, fn
-      {{:reserve, _id}, %{remaining: 0, ticket_type: type}} ->
-        broadcast(:soldout, type.id)
-        Notifications.notify_admin_soldout(type)
-
-      _ ->
-        :ok
-    end)
-  end
-
   # ── Confirmação / emissão ───────────────────────────────────────────────────
 
   @doc """
-  Confirma o pagamento e emite os ingressos (um row por unidade).
+  Confirma o pagamento, baixa a capacidade e emite os ingressos (um row por
+  unidade).
 
-  A transição `pending -> confirmed` é um `update_all` com guarda de status:
-  se o sweep de expiração (ou um cancelamento) ganhou a corrida, retorna
-  `{:error, :not_pending}` e nada é emitido.
+  É aqui — e só aqui — que `available` cai, via `update_all` condicional
+  (`where available >= quantity`). Como pedidos pendentes não seguram lugar,
+  dois podem ter sido criados pro mesmo último ingresso; o primeiro a confirmar
+  leva e o segundo recebe `{:error, {:sold_out, id}}`. A transição
+  `pending -> confirmed` tem guarda de status: se outro admin cancelou/confirmou
+  antes, retorna `{:error, :not_pending}` e nada é emitido.
 
   `opts[:code_fun]` injeta o gerador de código (testes de colisão).
   """
   @spec confirm_order(Ecto.UUID.t(), keyword()) ::
-          {:ok, Order.t()} | {:error, :not_pending} | {:error, term()}
+          {:ok, Order.t()}
+          | {:error, :not_pending}
+          | {:error, {:sold_out, String.t()}}
+          | {:error, term()}
   def confirm_order(id, opts \\ []) do
     code_fun = Keyword.get(opts, :code_fun, &generate_code/0)
 
@@ -242,6 +216,7 @@ defmodule SeshLab.Tickets do
       case transition(id, from: :pending, to: :confirmed) do
         :ok ->
           order = get_order!(id)
+          claim_capacity!(order)
           issue_tickets(order, code_fun)
           order
 
@@ -253,12 +228,40 @@ defmodule SeshLab.Tickets do
       {:ok, order} ->
         order = get_order!(order.id)
         broadcast(:order_updated, order.id)
+        detect_soldout(order)
         Notifications.notify_customer_order_update(order)
         {:ok, order}
 
       {:error, _} = err ->
         err
     end
+  end
+
+  # Atomic conditional decrement at confirm time. Rolls the whole confirmation
+  # back (no tickets, status stays pending) if any lot can't cover the quantity.
+  defp claim_capacity!(%Order{items: items}) do
+    Enum.each(items, fn %OrderItem{ticket_type_id: id, quantity: q} ->
+      query = from t in TicketType, where: t.id == ^id and t.available >= ^q and t.is_active
+
+      case Repo.update_all(query, inc: [available: -q]) do
+        {1, _} -> :ok
+        {0, _} -> Repo.rollback({:sold_out, id})
+      end
+    end)
+  end
+
+  # Fire soldout notification for any lot this confirmation drove to zero.
+  defp detect_soldout(%Order{items: items}) do
+    Enum.each(items, fn %OrderItem{ticket_type_id: id} ->
+      case Repo.get(TicketType, id) do
+        %TicketType{available: 0} = type ->
+          broadcast(:soldout, type.id)
+          Notifications.notify_admin_soldout(type)
+
+        _ ->
+          :ok
+      end
+    end)
   end
 
   defp issue_tickets(%Order{} = order, code_fun) do
@@ -347,20 +350,20 @@ defmodule SeshLab.Tickets do
   # ── Cancelamento / expiração ────────────────────────────────────────────────
 
   @doc """
-  Cancela um pedido. Pendente devolve capacidade; confirmado deleta os
-  ingressos emitidos (a porta passa a responder "não encontrado").
+  Cancela um pedido. Pendente não segura capacidade, então só muda o status;
+  confirmado devolve a capacidade baixada e deleta os ingressos emitidos (a
+  porta passa a responder "não encontrado").
   """
   @spec cancel_order(Ecto.UUID.t()) :: {:ok, Order.t()} | {:error, :not_cancellable}
   def cancel_order(id) do
     Repo.transaction(fn ->
       cond do
         transition(id, from: :pending, to: :cancelled) == :ok ->
-          order = get_order!(id)
-          restore_capacity(order)
-          order
+          get_order!(id)
 
         transition(id, from: :confirmed, to: :cancelled) == :ok ->
           order = get_order!(id)
+          restore_capacity(order)
           from(t in Ticket, where: t.order_id == ^order.id) |> Repo.delete_all()
           order
 
@@ -378,43 +381,6 @@ defmodule SeshLab.Tickets do
       {:error, _} = err ->
         err
     end
-  end
-
-  @doc """
-  Expira pedidos pendentes vencidos, devolvendo capacidade. Chamado pelo
-  `SeshLab.Tickets.ExpiryWorker` a cada minuto; `now` é injetável em teste.
-  """
-  @spec expire_pending(DateTime.t()) :: non_neg_integer()
-  def expire_pending(now \\ Clock.now_utc()) do
-    stale_ids =
-      from(o in Order,
-        where: o.status == :pending and not is_nil(o.expires_at) and o.expires_at <= ^now,
-        select: o.id
-      )
-      |> Repo.all()
-
-    Enum.count(stale_ids, fn id ->
-      Repo.transaction(fn ->
-        case transition(id, from: :pending, to: :expired) do
-          :ok ->
-            order = get_order!(id)
-            restore_capacity(order)
-            order
-
-          :stale ->
-            Repo.rollback(:already_transitioned)
-        end
-      end)
-      |> case do
-        {:ok, order} ->
-          broadcast(:order_updated, order.id)
-          Notifications.notify_customer_order_update(order)
-          true
-
-        {:error, _} ->
-          false
-      end
-    end)
   end
 
   # Guarded status transition: only succeeds if the order is still in `from`.
