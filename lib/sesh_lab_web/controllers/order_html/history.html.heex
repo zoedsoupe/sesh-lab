@@ -9,6 +9,24 @@
 
     <div class="stack-2" data-order-history></div>
 
+    <form class="stack-2" data-order-import>
+      <label class="text-xs text-dim" for="order-import-input">
+        Comprou pelo Instagram ou abriu o link em outro app? Cole aqui o link
+        do seu pedido pra salvá-lo neste aparelho.
+      </label>
+      <input
+        id="order-import-input"
+        type="text"
+        inputmode="url"
+        placeholder="https://…/compra/…"
+        class="input text-mono text-sm"
+        autocapitalize="off"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button type="submit" class="btn btn--ghost btn--block">Salvar pedido</button>
+    </form>
+
     <a href={~p"/"} class="btn btn--ghost btn--block">Voltar</a>
   </section>
 </Layouts.app>

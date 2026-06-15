@@ -66,3 +66,32 @@ export function renderOrderHistory() {
     root.appendChild(a);
   }
 }
+
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+// Import an order this device never visited (e.g. a backfilled order whose
+// link arrived by DM). On iOS the standalone PWA has its own localStorage,
+// isolated from Safari — an external link can't reach it. The escape hatch:
+// paste the /compra link HERE, inside the PWA, and we navigate to it in-scope
+// so the show page's bindOrderRecord() writes to the PWA's own store.
+export function bindOrderImport() {
+  const form = document.querySelector("[data-order-import]");
+  if (!form) return;
+
+  const input = form.querySelector("input");
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const id = input.value.match(UUID)?.[0];
+    if (!id) {
+      input.setCustomValidity("link inválido — cole o /compra/... que você recebeu.");
+      input.reportValidity();
+      return;
+    }
+    // In-scope navigation: stays in the PWA context, so the order is recorded
+    // in this store on arrival.
+    location.assign(`/compra/${id}`);
+  });
+
+  input.addEventListener("input", () => input.setCustomValidity(""));
+}
