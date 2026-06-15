@@ -127,7 +127,7 @@ defmodule SeshLabWeb.Admin.DashboardLive do
             <section class="stack-3">
               <div class="row space-between align-baseline">
                 <h2 class="text-sm text-muted">{@edition.name}</h2>
-                <a href={~p"/admin/edicoes/#{@edition.id}"} class="text-xs text-accent">Editar →</a>
+                <a href={~p"/admin/edicoes/#{@edition.id}"} class="text-xs text-accent">Editar</a>
               </div>
 
               <div class="stats-grid">

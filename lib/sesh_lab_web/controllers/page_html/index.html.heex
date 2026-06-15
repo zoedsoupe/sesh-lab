@@ -9,19 +9,7 @@
       >
         {@edition.name}
       </h1>
-      <a
-        href="https://www.instagram.com/coletivo.sesh/"
-        target="_blank"
-        rel="noopener"
-        class="text-mono text-sm text-accent"
-      >
-        @coletivo.sesh
-      </a>
     </header>
-
-    <p class="text-base text-muted">
-      Rolê experimental de música eletrônica! Som estranho até as 5h.
-    </p>
 
     <p class="date-duo">
       <span class="date-duo-time text-mono">{edition_time(@edition.starts_at)}</span>
@@ -39,16 +27,33 @@
     <section :if={@edition.venue} class="stack-1">
       <h2 class="text-sm text-muted">Onde</h2>
       <p class="text-base">{@edition.venue}</p>
-      <p :if={@edition.venue_address} class="text-xs text-dim">{@edition.venue_address}</p>
+      <a
+        :if={@edition.venue_address}
+        href={"https://www.google.com/maps/search/?api=1&query=#{URI.encode_www_form("#{@edition.venue} #{@edition.venue_address}")}"}
+        target="_blank"
+        rel="noopener"
+        class="text-xs text-dim"
+      >
+        {@edition.venue_address}
+      </a>
     </section>
 
     <p class="text-sm text-muted">
-      os DJs da cena têm que começar de algum lugar — manda teu set e toca com a gente.
+      os DJs da cena têm que começar de algum lugar! Manda teu set e toca com a gente.
     </p>
+
+    <a href={~p"/tocar"} class="btn btn--ghost btn--block">quero tocar!</a>
 
     <div class="cta-dock">
       <a href={~p"/comprar"} class="btn btn--blob btn--block">garantir ingresso →</a>
-      <a href={~p"/tocar"} class="btn btn--accent btn--block">quer tocar? →</a>
+      <a
+        href="https://www.instagram.com/coletivo.sesh/"
+        target="_blank"
+        rel="noopener"
+        class="btn btn--accent btn--block"
+      >
+        @coletivo.sesh
+      </a>
     </div>
   </section>
 

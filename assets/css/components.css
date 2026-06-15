@@ -1217,18 +1217,8 @@ body::after {
   color: var(--fg);
   text-transform: uppercase;
 }
-.lineup {
-  columns: 2;
-  column-gap: var(--s-5);
-}
 .lineup li {
   letter-spacing: 0.04em;
-  break-inside: avoid;
-}
-@media (max-width: 28rem) {
-  .lineup {
-    columns: 1;
-  }
 }
 
 /* ticket card — wirebox holding the white QR panel */
