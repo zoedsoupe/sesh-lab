@@ -50,6 +50,53 @@ defmodule SeshLab.Backfill do
     end
   end
 
+  @doc """
+  Lê pedidos **já** backfillados por @handle do Instagram e devolve o link
+  direto (`/compra/:id`) de cada um — pra mandar no direct. Não cria nada.
+
+      SeshLab.Backfill.links(1, ["posysavant81", "isinhc", "ju.klem"])
+
+  Aceita handle com ou sem `@`, case-insensitive. Um pedido pode ter vários
+  ingressos; o link abre a página do pedido (status + PIX + ingressos).
+
+  Retorna uma lista `%{name:, instagram:, order_id:, url:}`, um por pedido.
+  Handles sem pedido somem da saída (confira contra a lista de entrada).
+  Pedidos sem instagram (handle vazio no backfill) não casam aqui — busque
+  por nome: `Repo.get_by(Order, customer_name: "Pedro Lucas Nogueira")`.
+  """
+  @spec links(integer(), [String.t()]) :: [map()] | {:error, term()}
+  def links(edition_number, handles) when is_integer(edition_number) and is_list(handles) do
+    {:ok, _} = Application.ensure_all_started(:sesh_lab)
+
+    case Repo.get_by(Edition, number: edition_number) do
+      nil ->
+        {:error, {:edition_not_found, edition_number}}
+
+      %Edition{} = edition ->
+        wanted = MapSet.new(handles, &norm_handle/1)
+
+        Order
+        |> where([o], o.edition_id == ^edition.id)
+        |> Repo.all()
+        |> Enum.filter(&MapSet.member?(wanted, norm_handle(&1.customer_instagram)))
+        |> Enum.map(fn o ->
+          %{
+            name: o.customer_name,
+            instagram: o.customer_instagram,
+            order_id: o.id,
+            url: order_url(o.id)
+          }
+        end)
+    end
+  end
+
+  defp order_url(id), do: SeshLabWeb.Endpoint.url() <> "/compra/#{id}"
+
+  defp norm_handle(nil), do: ""
+
+  defp norm_handle(s),
+    do: s |> to_string() |> String.trim() |> String.trim_leading("@") |> String.downcase()
+
   defp types_by_name(edition_id) do
     TicketType
     |> where([t], t.edition_id == ^edition_id)
@@ -102,15 +149,25 @@ defmodule SeshLab.Backfill do
     })
     |> Repo.insert!()
 
-    # Abate a disponibilidade (clamp em 0 — esses lugares já saíram).
-    new_available = max(type.available - qty, 0)
-
-    Repo.update_all(from(t in TicketType, where: t.id == ^type.id),
-      set: [available: new_available]
+    # Abate a disponibilidade atomicamente (relativo + clamp em 0). SET absoluto
+    # a partir do `type` carregado em `run/2` é stale: vários compradores do mesmo
+    # lote se sobrescrevem e só o último decremento sobrevive.
+    from(t in TicketType,
+      where: t.id == ^type.id,
+      update: [set: [available: fragment("MAX(? - ?, 0)", t.available, ^qty)]]
     )
+    |> Repo.update_all([])
 
     codes = Enum.map(1..qty//1, fn _ -> insert_ticket!(edition, type, order) end)
-    %{name: buyer[:name], lote: type.name, qty: qty, codes: codes}
+
+    %{
+      name: buyer[:name],
+      lote: type.name,
+      qty: qty,
+      codes: codes,
+      order_id: order.id,
+      url: order_url(order.id)
+    }
   end
 
   # Mesma estratégia do Tickets.insert_ticket!: retry em colisão de código.
