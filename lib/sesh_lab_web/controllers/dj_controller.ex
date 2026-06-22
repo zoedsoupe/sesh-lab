@@ -14,12 +14,17 @@ defmodule SeshLabWeb.DjController do
       changeset: DjApplications.change(%DjApplication{}),
       submitted: params["ok"] == "1",
       form_ts: sign_ts(conn),
-      page_title: "quer tocar?"
+      open?: SeshLab.Settings.dj_applications_open?(),
+      page_title: "Quer tocar?"
     )
   end
 
   def create(conn, params) do
     cond do
+      # ponytail: silent_ok com inscrições fechadas significa que um humano que
+      # tinha o form aberto quando fechou recebe um sucesso falso — aceitável
+      # (revisão manual, nada persiste); troca por flash + re-render se importar.
+      not SeshLab.Settings.dj_applications_open?() -> silent_ok(conn)
       # Honeypot: campo "site" escondido; bot preenche, humano não.
       honeypot_filled?(params) -> silent_ok(conn)
       # Timestamp assinado: rejeita POST instantâneo (bot) sem dar pista.
@@ -35,12 +40,13 @@ defmodule SeshLabWeb.DjController do
 
       {:error, %Ecto.Changeset{} = cs} ->
         conn
-        |> put_flash(:error, "confere os campos e tenta de novo.")
+        |> put_flash(:error, "Confere os campos e tenta de novo.")
         |> render(:new,
           changeset: %{cs | action: :insert},
           submitted: false,
           form_ts: sign_ts(conn),
-          page_title: "quer tocar?"
+          open?: SeshLab.Settings.dj_applications_open?(),
+          page_title: "Quer tocar?"
         )
     end
   end

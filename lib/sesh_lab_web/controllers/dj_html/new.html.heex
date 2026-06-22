@@ -7,9 +7,20 @@
     <a href={~p"/"} class="btn btn--ghost btn--block">Voltar</a>
   </section>
 
+  <section :if={not @open? and not @submitted} class="stack-3">
+    <header class="stack-1">
+      <h1 class="text-xl text-mono">Inscrições fechadas</h1>
+      <p class="text-sm text-dim">
+        No momento não estamos recebendo inscrições. Fica de olho no
+        @coletivo.sesh no Instagram pra próxima chamada.
+      </p>
+    </header>
+    <a href={~p"/"} class="btn btn--ghost btn--block">Voltar</a>
+  </section>
+
   <.form
     :let={f}
-    :if={not @submitted}
+    :if={@open? and not @submitted}
     for={@changeset}
     action={~p"/tocar"}
     class="stack-5"
@@ -33,7 +44,7 @@
     <%!-- honeypot: bot preenche, humano não vê (off-screen, não display:none) --%>
     <div style="position:absolute;left:-9999px" aria-hidden="true">
       <label>
-        não preencha este campo <input type="text" name="site" tabindex="-1" autocomplete="off" />
+        Não preencha este campo <input type="text" name="site" tabindex="-1" autocomplete="off" />
       </label>
     </div>
 

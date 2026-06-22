@@ -25,7 +25,7 @@ defmodule SeshLabWeb.PublicPagesTest do
       html = conn |> get(~p"/") |> html_response(200)
       assert html =~ edition.name
       assert html =~ "OCA ROOTS"
-      assert html =~ "garantir ingresso"
+      assert html =~ "Garantir ingresso"
     end
 
     test "/comprar renders the buy form with the lot", %{conn: conn} do
@@ -36,8 +36,8 @@ defmodule SeshLabWeb.PublicPagesTest do
   end
 
   test "static public pages render", %{conn: conn} do
-    assert conn |> get(~p"/tocar") |> html_response(200) =~ "quer tocar"
+    assert conn |> get(~p"/tocar") |> html_response(200) =~ "Quer tocar"
     assert conn |> get(~p"/avisos") |> html_response(200) =~ "avisos"
-    assert conn |> get(~p"/meus-ingressos") |> html_response(200) =~ "meus ingressos"
+    assert conn |> get(~p"/meus-ingressos") |> html_response(200) =~ "Meus ingressos"
   end
 end

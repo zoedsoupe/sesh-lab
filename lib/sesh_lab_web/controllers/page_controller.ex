@@ -12,12 +12,12 @@ defmodule SeshLabWeb.PageController do
   end
 
   def sobre(conn, _params) do
-    render(conn, :sobre, page_title: "sobre")
+    render(conn, :sobre, page_title: "Sobre")
   end
 
   # Notification config panel. Stateless shell — the toggle/topics reflect the
   # device's own subscription, managed client-side (assets/js/client_push.js).
   def avisos(conn, _params) do
-    render(conn, :avisos, page_title: "avisos")
+    render(conn, :avisos, page_title: "Avisos")
   end
 end

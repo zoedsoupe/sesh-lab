@@ -17,9 +17,9 @@ defmodule SeshLabWeb.Layouts do
           <.sesh_logo />
         </a>
         <nav class="site-nav row gap-3 align-center">
-          <a href={~p"/meus-ingressos"}>ingressos</a>
-          <a href={~p"/sobre"}>sobre</a>
-          <a href={~p"/avisos"}>avisos</a>
+          <a href={~p"/meus-ingressos"}>Ingressos</a>
+          <a href={~p"/sobre"}>Sobre</a>
+          <a href={~p"/avisos"}>Avisos</a>
         </nav>
       </header>
 
@@ -33,6 +33,8 @@ defmodule SeshLabWeb.Layouts do
   end
 
   attr :flash, :map, default: %{}
+  attr :back, :string, default: nil, doc: "back-link label; omit on root (/admin)"
+  attr :back_to, :string, default: "/admin", doc: "back-link target"
   slot :inner_block, required: true
 
   def admin(assigns) do
@@ -44,11 +46,12 @@ defmodule SeshLabWeb.Layouts do
           <span class="text-mono text-xs text-dim">/admin</span>
         </a>
         <nav class="site-nav row gap-3">
-          <a href={~p"/"}>site</a>
+          <a href={~p"/"}>Site</a>
         </nav>
       </header>
 
       <main class="site-main">
+        <a :if={@back} href={@back_to} class="text-xs text-dim">← {@back}</a>
         {render_slot(@inner_block)}
       </main>
 

@@ -10,7 +10,7 @@ defmodule SeshLabWeb.OrderController do
     case Editions.current_edition() do
       nil ->
         conn
-        |> put_flash(:error, "nenhuma edição com ingressos à venda agora.")
+        |> put_flash(:error, "Nenhuma edição com ingressos à venda agora.")
         |> redirect(to: ~p"/")
 
       %Edition{} = edition ->
@@ -25,7 +25,7 @@ defmodule SeshLabWeb.OrderController do
     case Editions.current_edition() do
       nil ->
         conn
-        |> put_flash(:error, "nenhuma edição com ingressos à venda agora.")
+        |> put_flash(:error, "Nenhuma edição com ingressos à venda agora.")
         |> redirect(to: ~p"/")
 
       %Edition{} = edition ->
@@ -37,17 +37,17 @@ defmodule SeshLabWeb.OrderController do
             type = Editions.get_ticket_type!(type_id)
 
             conn
-            |> put_flash(:error, "ingressos esgotados para #{type.name}.")
+            |> put_flash(:error, "Ingressos esgotados para #{type.name}.")
             |> render_form(reload(edition), changeset(order_params), items_params)
 
           {:error, {:not_on_sale, _id}} ->
             conn
-            |> put_flash(:error, "esse lote não está mais à venda.")
+            |> put_flash(:error, "Esse lote não está mais à venda.")
             |> render_form(reload(edition), changeset(order_params), items_params)
 
           {:error, :empty_cart} ->
             conn
-            |> put_flash(:error, "escolha pelo menos um ingresso.")
+            |> put_flash(:error, "Escolha pelo menos um ingresso.")
             |> render_form(reload(edition), changeset(order_params), items_params)
 
           {:error, {:coupon, reason}} ->
@@ -60,7 +60,7 @@ defmodule SeshLabWeb.OrderController do
 
           {:error, _} ->
             conn
-            |> put_flash(:error, "não foi possível registrar o pedido.")
+            |> put_flash(:error, "Não foi possível registrar o pedido.")
             |> render_form(reload(edition), changeset(order_params), items_params)
         end
     end
@@ -77,14 +77,14 @@ defmodule SeshLabWeb.OrderController do
       edition: edition,
       pix: pix_payload(order),
       earned: Coupons.earned_for_order(order.id),
-      page_title: "ingresso"
+      page_title: "Ingresso"
     )
   end
 
   # Static shell — the list is rendered client-side from localStorage
   # (assets/js/orders.js). No DB query, no PII server-side.
   def history(conn, _params) do
-    render(conn, :history, page_title: "meus ingressos")
+    render(conn, :history, page_title: "Meus ingressos")
   end
 
   # ── helpers ─────────────────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ defmodule SeshLabWeb.OrderController do
       changeset: changeset,
       lots: lots_on_sale(edition),
       items: normalize_items_param(items),
-      page_title: "comprar — #{edition.name}"
+      page_title: "Comprar — #{edition.name}"
     )
   end
 
@@ -129,18 +129,18 @@ defmodule SeshLabWeb.OrderController do
   defp normalize_items_param(items) when is_map(items), do: items
   defp normalize_items_param(_), do: %{}
 
-  defp coupon_error(:not_found), do: "cupom não encontrado."
-  defp coupon_error(:expired), do: "esse cupom expirou."
-  defp coupon_error(:used), do: "esse cupom já foi usado."
-  defp coupon_error(:inactive), do: "esse cupom não está mais ativo."
-  defp coupon_error(:exhausted), do: "esse cupom atingiu o limite de usos."
-  defp coupon_error(:wrong_customer), do: "esse cupom é de outra pessoa."
-  defp coupon_error(:coupon_taken), do: "esse cupom acabou de ser usado. tente outro."
+  defp coupon_error(:not_found), do: "Cupom não encontrado."
+  defp coupon_error(:expired), do: "Esse cupom expirou."
+  defp coupon_error(:used), do: "Esse cupom já foi usado."
+  defp coupon_error(:inactive), do: "Esse cupom não está mais ativo."
+  defp coupon_error(:exhausted), do: "Esse cupom atingiu o limite de usos."
+  defp coupon_error(:wrong_customer), do: "Esse cupom é de outra pessoa."
+  defp coupon_error(:coupon_taken), do: "Esse cupom acabou de ser usado. tente outro."
 
   defp coupon_error({:min_order, cents}),
-    do: "esse cupom exige pedido mínimo de #{SeshLabWeb.CoreComponents.money(cents)}."
+    do: "Esse cupom exige pedido mínimo de #{SeshLabWeb.CoreComponents.money(cents)}."
 
-  defp coupon_error(_), do: "cupom inválido."
+  defp coupon_error(_), do: "Cupom inválido."
 
   defp pix_payload(%Order{status: :pending} = order) do
     cfg = Application.fetch_env!(:sesh_lab, :pix)

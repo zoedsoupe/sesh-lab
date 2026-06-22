@@ -38,7 +38,7 @@ defmodule SeshLabWeb.OrderHTML do
       </div>
 
       <div :if={lot.description not in [nil, ""]} class="lot-req">
-        <span class="lot-req-label">pra usar esse ingresso</span>
+        <span class="lot-req-label">Pra usar esse ingresso</span>
         <span class="lot-req-text">{lot.description}</span>
       </div>
     </li>

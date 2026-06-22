@@ -122,6 +122,96 @@ defmodule SeshLab.TicketsTest do
     end
   end
 
+  describe "issue_confirmed/2" do
+    test "emits against an inactive lote without gating on is_active" do
+      {edition, lot} = edition_with_lot(%{}, %{capacity: 10, is_active: false})
+
+      assert {:ok, %{order: order, codes: [_, _] = codes}} =
+               Tickets.issue_confirmed(%{
+                 edition_id: edition.id,
+                 ticket_type_id: lot.id,
+                 customer_name: "Maria",
+                 customer_instagram: "maria",
+                 quantity: 2
+               })
+
+      assert order.status == :confirmed
+      assert Repo.aggregate(Ticket, :count, :id) == 2
+      assert length(codes) == 2
+      assert Repo.get!(TicketType, lot.id).available == 8
+    end
+
+    test "does not touch a sibling active paid lote's available" do
+      edition = edition_fixture()
+      paid = ticket_type_fixture(edition, %{name: "Lote 1", capacity: 5})
+      comp = ticket_type_fixture(edition, %{name: "Cortesia", capacity: 10, is_active: false})
+
+      assert {:ok, _} =
+               Tickets.issue_confirmed(%{
+                 edition_id: edition.id,
+                 ticket_type_id: comp.id,
+                 customer_name: "Maria",
+                 customer_instagram: "maria",
+                 quantity: 3
+               })
+
+      assert Repo.get!(TicketType, comp.id).available == 7
+      assert Repo.get!(TicketType, paid.id).available == 5
+    end
+
+    test "clamps available at 0 when qty exceeds it, tickets still emitted" do
+      {edition, lot} = edition_with_lot(%{}, %{capacity: 2, is_active: false})
+
+      assert {:ok, %{codes: codes}} =
+               Tickets.issue_confirmed(%{
+                 edition_id: edition.id,
+                 ticket_type_id: lot.id,
+                 customer_name: "Maria",
+                 customer_instagram: "maria",
+                 quantity: 5
+               })
+
+      assert length(codes) == 5
+      assert Repo.aggregate(Ticket, :count, :id) == 5
+      assert Repo.get!(TicketType, lot.id).available == 0
+    end
+
+    test "blank instagram returns a changeset error, persists nothing" do
+      {edition, lot} = edition_with_lot(%{}, %{capacity: 10, is_active: false})
+
+      assert {:error, %Ecto.Changeset{}} =
+               Tickets.issue_confirmed(%{
+                 edition_id: edition.id,
+                 ticket_type_id: lot.id,
+                 customer_name: "Maria",
+                 customer_instagram: "",
+                 quantity: 1
+               })
+
+      assert Repo.aggregate(Order, :count, :id) == 0
+      assert Repo.aggregate(Ticket, :count, :id) == 0
+    end
+
+    test "notify?: true broadcasts new_order, notify?: false does not" do
+      {edition, lot} = edition_with_lot(%{}, %{capacity: 10, is_active: false})
+      Phoenix.PubSub.subscribe(SeshLab.PubSub, "admin:orders")
+
+      input = %{
+        edition_id: edition.id,
+        ticket_type_id: lot.id,
+        customer_name: "Maria",
+        customer_instagram: "maria",
+        quantity: 1
+      }
+
+      assert {:ok, _} = Tickets.issue_confirmed(input, notify?: false)
+      refute_receive {:new_order, _}, 100
+
+      assert {:ok, _} = Tickets.issue_confirmed(input, notify?: true)
+      assert_receive {:new_order, _}
+    end
+  end
+
   describe "validate_ticket/1" do
     setup do
       {edition, lot} = edition_with_lot()
@@ -223,6 +313,50 @@ defmodule SeshLab.TicketsTest do
       # Pending no longer subtracts from available — only confirmed does.
       assert stats.available == 8
       assert stats.validated == 1
+    end
+  end
+
+  describe "search_orders/2" do
+    setup do
+      {edition, _lot} = edition_with_lot()
+      {:ok, edition: edition}
+    end
+
+    test "finds by instagram handle, stripping @ and casing", %{edition: edition} do
+      insert_order(edition, %{customer_name: "Ana Costa", customer_instagram: "anaclara"})
+      assert [o] = Tickets.search_orders("@AnaCl")
+      assert o.customer_instagram == "anaclara"
+    end
+
+    test "matches name as a substring", %{edition: edition} do
+      insert_order(edition, %{customer_name: "Ana Costa", customer_instagram: "ac"})
+      assert [o] = Tickets.search_orders("Costa")
+      assert o.customer_name == "Ana Costa"
+    end
+
+    test "term under 2 chars returns empty", %{edition: edition} do
+      insert_order(edition, %{customer_name: "Ana", customer_instagram: "ana"})
+      assert Tickets.search_orders("a") == []
+    end
+
+    test "trims whitespace", %{edition: edition} do
+      insert_order(edition, %{customer_name: "Ana", customer_instagram: "ana"})
+      assert [_] = Tickets.search_orders("  ana  ")
+    end
+
+    test "is not edition-scoped — finds across editions", %{edition: edition} do
+      other = edition_fixture()
+      insert_order(edition, %{customer_name: "Zé Um", customer_instagram: "zeum"})
+      insert_order(other, %{customer_name: "Zé Dois", customer_instagram: "zedois"})
+      assert length(Tickets.search_orders("zé")) == 2
+    end
+
+    test "accented name searched without accent does not match (documented ASCII ceiling)",
+         %{edition: edition} do
+      insert_order(edition, %{customer_name: "José", customer_instagram: "jose"})
+      # name arm misses (accent), but handle arm still finds it via "jose"
+      assert [_] = Tickets.search_orders("jose")
+      assert Tickets.search_orders("josé2") == []
     end
   end
 end

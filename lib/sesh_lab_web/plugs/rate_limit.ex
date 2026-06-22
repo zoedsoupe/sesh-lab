@@ -34,7 +34,7 @@ defmodule SeshLabWeb.Plugs.RateLimit do
     if length(hits) >= max do
       conn
       |> put_resp_content_type("text/plain")
-      |> send_resp(429, "muitas tentativas. tenta de novo mais tarde.")
+      |> send_resp(429, "Muitas tentativas. tenta de novo mais tarde.")
       |> halt()
     else
       :ets.insert(@table, {key, [now | hits]})

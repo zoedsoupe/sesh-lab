@@ -6,7 +6,19 @@ defmodule SeshLabWeb.Admin.DjApplicationsLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, applications: DjApplications.list(), page_title: "quer tocar")}
+    {:ok,
+     assign(socket,
+       applications: DjApplications.list(),
+       open?: SeshLab.Settings.dj_applications_open?(),
+       page_title: "Quer tocar"
+     )}
+  end
+
+  @impl true
+  def handle_event("toggle_open", _params, socket) do
+    next = not socket.assigns.open?
+    {:ok, _} = SeshLab.Settings.set_dj_applications_open(next)
+    {:noreply, assign(socket, open?: next)}
   end
 
   # Brazilian numbers come in as DDD + número (10–11 dígitos); prepend country
@@ -19,16 +31,22 @@ defmodule SeshLabWeb.Admin.DjApplicationsLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.admin flash={@flash}>
+    <Layouts.admin flash={@flash} back="Painel">
       <section class="stack-5">
-        <a href={~p"/admin"} class="text-xs text-dim">← painel</a>
-
         <header class="stack-1">
-          <h1 class="text-xl text-mono">quer tocar?</h1>
+          <h1 class="text-xl text-mono">Quer tocar?</h1>
           <p class="text-xs text-dim">{length(@applications)} inscrição(ões)</p>
+          <div class="row space-between align-baseline">
+            <p class="text-xs text-dim">
+              Inscrições: {if @open?, do: "abertas", else: "fechadas"}
+            </p>
+            <button type="button" phx-click="toggle_open" class="btn btn--ghost btn--sm">
+              {if @open?, do: "Fechar", else: "Abrir"}
+            </button>
+          </div>
         </header>
 
-        <p :if={@applications == []} class="text-sm text-dim">nenhuma inscrição ainda.</p>
+        <p :if={@applications == []} class="text-sm text-dim">Nenhuma inscrição ainda.</p>
 
         <ul class="stack-3">
           <li :for={a <- @applications} class="card stack-2">
@@ -42,7 +60,7 @@ defmodule SeshLabWeb.Admin.DjApplicationsLive do
 
             <div class="row gap-3 text-xs">
               <a href={wa_url(a.whatsapp)} target="_blank" rel="noopener" class="text-accent">
-                whatsapp
+                Whatsapp
               </a>
               <a
                 href={Instagram.profile_url(a.instagram)}

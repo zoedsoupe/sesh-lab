@@ -27,7 +27,7 @@ defmodule SeshLabWeb.Admin.ScannerLiveTest do
 
   test "shows the door header for the published edition", %{conn: conn, auth: auth} do
     {:ok, _view, html} = conn |> authed(auth) |> live(~p"/admin/validar")
-    assert html =~ "porta"
+    assert html =~ "Porta"
     assert html =~ "validadas 0 / vendidas 1"
   end
 
@@ -36,12 +36,12 @@ defmodule SeshLabWeb.Admin.ScannerLiveTest do
 
     html = view |> element("#scanner") |> render_hook("scan", %{"code" => t.code})
     assert html =~ "scan-result--ok"
-    assert html =~ "entrou"
+    assert html =~ "Entrou"
     assert html =~ "validadas 1 / vendidas 1"
 
     html = view |> element("#scanner") |> render_hook("scan", %{"code" => t.code})
     assert html =~ "scan-result--err"
-    assert html =~ "já validado"
+    assert html =~ "Já validado"
   end
 
   test "manual unknown code is not found", %{conn: conn, auth: auth} do
@@ -49,7 +49,7 @@ defmodule SeshLabWeb.Admin.ScannerLiveTest do
 
     html = view |> form("#scanner form", %{code: "ZZZZZZZZ"}) |> render_submit()
     assert html =~ "scan-result--err"
-    assert html =~ "não encontrado"
+    assert html =~ "Não encontrado"
   end
 
   test "manual validate accepts a noisy lowercase/hyphenated code", %{

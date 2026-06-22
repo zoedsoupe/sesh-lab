@@ -27,7 +27,7 @@ defmodule SeshLabWeb.Admin.CouponFormLive do
       {:ok, coupon} ->
         {:noreply,
          socket
-         |> put_flash(:info, "cupom #{coupon.code} criado.")
+         |> put_flash(:info, "Cupom #{coupon.code} criado.")
          |> push_navigate(to: ~p"/admin/cupons")}
 
       {:error, changeset} ->
@@ -41,7 +41,7 @@ defmodule SeshLabWeb.Admin.CouponFormLive do
     case Coupons.update_public_coupon(socket.assigns.coupon, attrs) do
       {:ok, _coupon} ->
         {:noreply,
-         socket |> put_flash(:info, "cupom salvo.") |> push_navigate(to: ~p"/admin/cupons")}
+         socket |> put_flash(:info, "Cupom salvo.") |> push_navigate(to: ~p"/admin/cupons")}
 
       {:error, changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
@@ -52,7 +52,7 @@ defmodule SeshLabWeb.Admin.CouponFormLive do
     {:ok, _} = Coupons.delete_coupon(socket.assigns.coupon)
 
     {:noreply,
-     socket |> put_flash(:info, "cupom removido.") |> push_navigate(to: ~p"/admin/cupons")}
+     socket |> put_flash(:info, "Cupom removido.") |> push_navigate(to: ~p"/admin/cupons")}
   end
 
   defp assign_coupon(socket, _params, :new), do: assign_form(socket, %Coupon{is_active: true})
@@ -63,7 +63,7 @@ defmodule SeshLabWeb.Admin.CouponFormLive do
   defp assign_form(socket, coupon) do
     assign(socket,
       coupon: coupon,
-      page_title: if(coupon.id, do: "editar cupom", else: "novo cupom"),
+      page_title: if(coupon.id, do: "Editar cupom", else: "Novo cupom"),
       expires_in_days: "",
       form: to_form(Coupons.change_public_coupon(coupon))
     )
@@ -88,33 +88,32 @@ defmodule SeshLabWeb.Admin.CouponFormLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.admin flash={@flash}>
+    <Layouts.admin flash={@flash} back="Cupons" back_to="/admin/cupons">
       <section class="stack-5">
-        <a href={~p"/admin/cupons"} class="text-xs text-dim">← cupons</a>
         <h1 class="text-xl text-mono">
-          {if @live_action == :new, do: "novo cupom público", else: "editar cupom"}
+          {if @live_action == :new, do: "Novo cupom público", else: "Editar cupom"}
         </h1>
         <p class="text-xs text-dim">
-          cupom que qualquer cliente pode usar. ao criar (ativo), os inscritos recebem um aviso.
+          Cupom que qualquer cliente pode usar. ao criar (ativo), os inscritos recebem um aviso.
         </p>
 
         <.form for={@form} phx-change="validate" phx-submit="save" class="stack-3" id="coupon-form">
           <.input
             field={@form[:code]}
-            label="código (vazio = gerar automático)"
+            label="Código (vazio = gerar automático)"
             autocomplete="off"
-            placeholder="ex: BLACKFRIDAY10"
+            placeholder="Ex: BLACKFRIDAY10"
           />
           <.input
             field={@form[:discount_kind]}
             type="select"
-            label="tipo de desconto"
-            options={[{"porcentagem (%)", "percent"}, {"valor fixo (centavos)", "fixed"}]}
+            label="Tipo de desconto"
+            options={[{"Porcentagem (%)", "percent"}, {"Valor fixo (centavos)", "fixed"}]}
           />
           <.input
             field={@form[:discount_value]}
             type="number"
-            label="valor do desconto (% ou centavos)"
+            label="Valor do desconto (% ou centavos)"
             required
             inputmode="numeric"
           />
@@ -122,36 +121,36 @@ defmodule SeshLabWeb.Admin.CouponFormLive do
             name="coupon[expires_in_days]"
             value={@expires_in_days}
             type="number"
-            label="validade (dias, vazio = sem expirar)"
+            label="Validade (dias, vazio = sem expirar)"
             inputmode="numeric"
           />
           <.input
             field={@form[:min_order_cents]}
             type="number"
-            label="pedido mínimo (centavos, opcional)"
+            label="Pedido mínimo (centavos, opcional)"
             inputmode="numeric"
           />
           <.input
             field={@form[:max_uses]}
             type="number"
-            label="limite de usos (vazio = ilimitado)"
+            label="Limite de usos (vazio = ilimitado)"
             inputmode="numeric"
           />
-          <.input field={@form[:is_active]} type="checkbox" label="ativo" />
+          <.input field={@form[:is_active]} type="checkbox" label="Ativo" />
 
           <.button type="submit" class="btn--block">
-            {if @live_action == :new, do: "criar", else: "salvar"}
+            {if @live_action == :new, do: "Criar", else: "Salvar"}
           </.button>
         </.form>
 
         <.button
           :if={@live_action == :edit}
           phx-click="delete"
-          data-confirm="apagar este cupom?"
+          data-confirm="Apagar este cupom?"
           variant={:danger}
           class="btn--block"
         >
-          apagar cupom
+          Apagar cupom
         </.button>
       </section>
     </Layouts.admin>

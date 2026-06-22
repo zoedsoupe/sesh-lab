@@ -23,7 +23,7 @@ defmodule SeshLabWeb.Admin.CouponRuleFormLive do
     case Coupons.create_rule(params) do
       {:ok, _rule} ->
         {:noreply,
-         socket |> put_flash(:info, "regra criada.") |> push_navigate(to: ~p"/admin/cupons")}
+         socket |> put_flash(:info, "Regra criada.") |> push_navigate(to: ~p"/admin/cupons")}
 
       {:error, changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
@@ -34,7 +34,7 @@ defmodule SeshLabWeb.Admin.CouponRuleFormLive do
     case Coupons.update_rule(socket.assigns.rule, params) do
       {:ok, _rule} ->
         {:noreply,
-         socket |> put_flash(:info, "regra salva.") |> push_navigate(to: ~p"/admin/cupons")}
+         socket |> put_flash(:info, "Regra salva.") |> push_navigate(to: ~p"/admin/cupons")}
 
       {:error, changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
@@ -45,7 +45,7 @@ defmodule SeshLabWeb.Admin.CouponRuleFormLive do
     {:ok, _} = Coupons.delete_rule(socket.assigns.rule)
 
     {:noreply,
-     socket |> put_flash(:info, "regra removida.") |> push_navigate(to: ~p"/admin/cupons")}
+     socket |> put_flash(:info, "Regra removida.") |> push_navigate(to: ~p"/admin/cupons")}
   end
 
   defp assign_rule(socket, _params, :new), do: assign_form(socket, %CouponRule{is_active: true})
@@ -54,7 +54,7 @@ defmodule SeshLabWeb.Admin.CouponRuleFormLive do
   defp assign_form(socket, rule) do
     assign(socket,
       rule: rule,
-      page_title: if(rule.id, do: "editar regra", else: "nova regra"),
+      page_title: if(rule.id, do: "Editar regra", else: "Nova regra"),
       form: to_form(Coupons.change_rule(rule))
     )
   end
@@ -62,59 +62,58 @@ defmodule SeshLabWeb.Admin.CouponRuleFormLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.admin flash={@flash}>
+    <Layouts.admin flash={@flash} back="Cupons" back_to="/admin/cupons">
       <section class="stack-5">
-        <a href={~p"/admin/cupons"} class="text-xs text-dim">← cupons</a>
         <h1 class="text-xl text-mono">
-          {if @live_action == :new, do: "nova regra de cupom", else: "editar regra"}
+          {if @live_action == :new, do: "Nova regra de cupom", else: "Editar regra"}
         </h1>
         <p class="text-xs text-dim">
-          emite um cupom automático quando o pedido atinge o valor mínimo.
+          Emite um cupom automático quando o pedido atinge o valor mínimo.
         </p>
 
         <.form for={@form} phx-change="validate" phx-submit="save" class="stack-3" id="rule-form">
-          <.input field={@form[:name]} label="nome (ex: pedido grande)" required />
+          <.input field={@form[:name]} label="Nome (ex: pedido grande)" required />
           <.input
             field={@form[:min_order_cents]}
             type="number"
-            label="pedido mínimo (centavos)"
+            label="Pedido mínimo (centavos)"
             required
             inputmode="numeric"
           />
           <.input
             field={@form[:discount_kind]}
             type="select"
-            label="tipo de desconto"
-            options={[{"porcentagem (%)", "percent"}, {"valor fixo (centavos)", "fixed"}]}
+            label="Tipo de desconto"
+            options={[{"Porcentagem (%)", "percent"}, {"Valor fixo (centavos)", "fixed"}]}
           />
           <.input
             field={@form[:discount_value]}
             type="number"
-            label="valor do desconto (% ou centavos)"
+            label="Valor do desconto (% ou centavos)"
             required
             inputmode="numeric"
           />
           <.input
             field={@form[:expires_in_days]}
             type="number"
-            label="validade do cupom (dias)"
+            label="Validade do cupom (dias)"
             inputmode="numeric"
           />
-          <.input field={@form[:is_active]} type="checkbox" label="ativa" />
+          <.input field={@form[:is_active]} type="checkbox" label="Ativa" />
 
           <.button type="submit" class="btn--block">
-            {if @live_action == :new, do: "criar", else: "salvar"}
+            {if @live_action == :new, do: "Criar", else: "Salvar"}
           </.button>
         </.form>
 
         <.button
           :if={@live_action == :edit}
           phx-click="delete"
-          data-confirm="apagar esta regra?"
+          data-confirm="Apagar esta regra?"
           variant={:danger}
           class="btn--block"
         >
-          apagar regra
+          Apagar regra
         </.button>
       </section>
     </Layouts.admin>

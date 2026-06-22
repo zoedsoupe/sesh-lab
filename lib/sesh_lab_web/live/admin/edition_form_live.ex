@@ -34,13 +34,13 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
       {:ok, edition} ->
         {:noreply,
          socket
-         |> put_flash(:info, "edição “#{edition.name}” criada. publique quando estiver pronta.")
+         |> put_flash(:info, "Edição “#{edition.name}” criada. publique quando estiver pronta.")
          |> push_navigate(to: ~p"/admin/edicoes/#{edition.id}")}
 
       {:error, changeset} ->
         {:noreply,
          socket
-         |> put_flash(:error, "confira os campos abaixo.")
+         |> put_flash(:error, "Confira os campos abaixo.")
          |> assign(form: to_form(changeset))}
     end
   end
@@ -51,12 +51,12 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
 
     case Editions.update_edition(edition, params) do
       {:ok, edition} ->
-        {:noreply, socket |> put_flash(:info, "edição salva.") |> assign_form(edition)}
+        {:noreply, socket |> put_flash(:info, "Edição salva.") |> assign_form(edition)}
 
       {:error, changeset} ->
         {:noreply,
          socket
-         |> put_flash(:error, "confira os campos abaixo.")
+         |> put_flash(:error, "Confira os campos abaixo.")
          |> assign(form: to_form(changeset))}
     end
   end
@@ -68,17 +68,17 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
 
         {:noreply,
          socket
-         |> put_flash(:info, "edição publicada (qualquer outra publicada foi arquivada).")
+         |> put_flash(:info, "Edição publicada (qualquer outra publicada foi arquivada).")
          |> assign_form(Editions.get_edition!(edition.id))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, "não foi possível publicar.")}
+        {:noreply, put_flash(socket, :error, "Não foi possível publicar.")}
     end
   end
 
   def handle_event("archive", _params, socket) do
     {:ok, edition} = Editions.archive(socket.assigns.edition)
-    {:noreply, socket |> put_flash(:info, "edição arquivada.") |> assign_form(edition)}
+    {:noreply, socket |> put_flash(:info, "Edição arquivada.") |> assign_form(edition)}
   end
 
   def handle_event("cancel-upload", %{"ref" => ref}, socket) do
@@ -87,7 +87,7 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
 
   def handle_event("remove-logo", _params, socket) do
     {:ok, edition} = Editions.update_edition(socket.assigns.edition, %{logo_path: nil})
-    {:noreply, socket |> put_flash(:info, "logo removida.") |> assign_form(edition)}
+    {:noreply, socket |> put_flash(:info, "Logo removida.") |> assign_form(edition)}
   end
 
   # ── data ────────────────────────────────────────────────────────────────────
@@ -100,7 +100,7 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
   defp assign_form(socket, %Edition{} = edition) do
     assign(socket,
       edition: edition,
-      page_title: edition.name || "nova edição",
+      page_title: edition.name || "Nova edição",
       starts_at_local: starts_at_local(edition.starts_at),
       form: to_form(Editions.change_edition(edition))
     )
@@ -156,9 +156,9 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
   defp slug_from(value),
     do: Regex.replace(~r/[^a-z0-9]/i, to_string(value), "") |> String.downcase()
 
-  defp upload_error_message(:too_large), do: "arquivo grande demais (máx 2 MB)"
-  defp upload_error_message(:not_accepted), do: "formato não aceito (use svg ou png)"
-  defp upload_error_message(:too_many_files), do: "só um arquivo"
+  defp upload_error_message(:too_large), do: "Arquivo grande demais (máx 2 MB)"
+  defp upload_error_message(:not_accepted), do: "Formato não aceito (use svg ou png)"
+  defp upload_error_message(:too_many_files), do: "Só um arquivo"
   defp upload_error_message(other), do: to_string(other)
 
   defp accent(form), do: form[:accent_color].value || "#F07BC0"
@@ -168,13 +168,11 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.admin flash={@flash}>
+    <Layouts.admin flash={@flash} back="Painel">
       <section class="stack-5">
-        <a href={~p"/admin"} class="text-xs text-dim">← painel</a>
-
         <div class="row space-between align-baseline">
           <h1 class="text-xl text-mono">
-            {if @live_action == :new, do: "nova edição", else: @edition.name}
+            {if @live_action == :new, do: "Nova edição", else: @edition.name}
           </h1>
           <.status_badge :if={@edition.id} status={@edition.status} />
         </div>
@@ -187,11 +185,11 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
           class="stack-3"
           multipart
         >
-          <.input field={@form[:number]} type="number" label="número" required inputmode="numeric" />
-          <.input field={@form[:name]} label="nome (vazio = “SESH #N”)" />
+          <.input field={@form[:number]} type="number" label="Número" required inputmode="numeric" />
+          <.input field={@form[:name]} label="Nome (vazio = “SESH #N”)" />
 
           <label class="field stack-1">
-            <span class="field-label">data e hora (horário de Brasília)</span>
+            <span class="field-label">Data e hora (horário de Brasília)</span>
             <input
               type="datetime-local"
               name="edition[starts_at]"
@@ -201,17 +199,17 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
             />
           </label>
 
-          <.input field={@form[:venue]} label="local" required />
-          <.input field={@form[:venue_address]} label="endereço" />
+          <.input field={@form[:venue]} label="Local" required />
+          <.input field={@form[:venue_address]} label="Endereço" />
           <.input
             field={@form[:lineup]}
             type="textarea"
-            label="lineup (um nome por linha)"
+            label="Lineup (um nome por linha)"
             rows="4"
           />
 
           <div class="field stack-1">
-            <span class="field-label">cor de destaque</span>
+            <span class="field-label">Cor de destaque</span>
             <div class="row gap-3 align-center">
               <input
                 type="color"
@@ -230,19 +228,19 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
 
           <%!-- logo override (img, sem currentColor) --%>
           <div class="field stack-2">
-            <span class="field-label">logo da edição (opcional)</span>
+            <span class="field-label">Logo da edição (opcional)</span>
 
             <details :if={@edition.logo_path} class="product-detail">
-              <summary class="text-xs text-dim">ver logo atual</summary>
+              <summary class="text-xs text-dim">Ver logo atual</summary>
               <div class="photo-preview mt-3">
                 <img src={Editions.logo_url(@edition.logo_path)} alt="logo" width="120" />
                 <button
                   type="button"
                   phx-click="remove-logo"
-                  data-confirm="remover logo atual?"
+                  data-confirm="Remover logo atual?"
                   class="btn btn--ghost btn--sm"
                 >
-                  remover
+                  Remover
                 </button>
               </div>
             </details>
@@ -265,7 +263,7 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
                 phx-value-ref={entry.ref}
                 class="btn btn--ghost btn--sm"
               >
-                cancelar
+                Cancelar
               </button>
               <p :for={err <- upload_errors(@uploads.logo, entry)} class="field-error">
                 {upload_error_message(err)}
@@ -279,42 +277,42 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
 
           <%!-- lotes inline (cast_assoc + sort/drop) --%>
           <fieldset class="stack-3">
-            <legend class="text-sm text-muted">lotes</legend>
+            <legend class="text-sm text-muted">Lotes</legend>
 
             <.inputs_for :let={lot} field={@form[:ticket_types]}>
               <div class="card stack-2">
                 <input type="hidden" name="edition[ticket_types_sort][]" value={lot.index} />
 
-                <.input field={lot[:name]} label="nome (ex: Lote 1)" required />
+                <.input field={lot[:name]} label="Nome (ex: Lote 1)" required />
                 <.input
                   field={lot[:description]}
                   type="textarea"
-                  label="descrição / regras (ex: marque 2 amigos no post)"
+                  label="Descrição / regras (ex: marque 2 amigos no post)"
                   rows="2"
                 />
                 <div class="row gap-3">
                   <.input
                     field={lot[:price_cents]}
                     type="number"
-                    label="preço (centavos)"
+                    label="Preço (centavos)"
                     required
                     inputmode="numeric"
                   />
                   <.input
                     field={lot[:capacity]}
                     type="number"
-                    label="capacidade"
+                    label="Capacidade"
                     required
                     inputmode="numeric"
                   />
                   <.input
                     field={lot[:position]}
                     type="number"
-                    label="ordem"
+                    label="Ordem"
                     inputmode="numeric"
                   />
                 </div>
-                <.input field={lot[:is_active]} type="checkbox" label="à venda" />
+                <.input field={lot[:is_active]} type="checkbox" label="À venda" />
 
                 <button
                   type="button"
@@ -323,7 +321,7 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
                   phx-click={JS.dispatch("change")}
                   class="btn btn--ghost btn--sm"
                 >
-                  remover lote
+                  Remover lote
                 </button>
               </div>
             </.inputs_for>
@@ -337,12 +335,12 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
               phx-click={JS.dispatch("change")}
               class="btn btn--ghost btn--block"
             >
-              + adicionar lote
+              + Adicionar lote
             </button>
           </fieldset>
 
           <.button type="submit" class="btn--block">
-            {if @live_action == :new, do: "criar edição", else: "salvar"}
+            {if @live_action == :new, do: "Criar edição", else: "Salvar"}
           </.button>
         </.form>
 
@@ -350,20 +348,20 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
           <.button
             :if={@edition.status != :published}
             phx-click="publish"
-            data-confirm="publicar esta edição? a landing passa a mostrá-la e qualquer outra publicada é arquivada."
+            data-confirm="Publicar esta edição? a landing passa a mostrá-la e qualquer outra publicada é arquivada."
             class="btn--block"
           >
-            publicar
+            Publicar
           </.button>
 
           <.button
             :if={@edition.status == :published}
             phx-click="archive"
-            data-confirm="despublicar? a landing volta pro teaser."
+            data-confirm="Despublicar? a landing volta pro teaser."
             variant={:danger}
             class="btn--block"
           >
-            despublicar
+            Despublicar
           </.button>
         </div>
       </section>

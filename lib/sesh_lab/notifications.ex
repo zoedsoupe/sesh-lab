@@ -177,11 +177,11 @@ defmodule SeshLab.Notifications do
           expires_at: DateTime.t() | nil
         }) :: :ok
   def announce_coupon(%{code: code, discount_kind: kind, discount_value: value, expires_at: exp}) do
-    body = "use #{code} — #{discount_label(kind, value)}#{expiry_suffix(exp)}"
+    body = "Use #{code} — #{discount_label(kind, value)}#{expiry_suffix(exp)}"
 
     broadcast_to_topic("coupons", %{
       "t" => "coupon",
-      "title" => "novo cupom",
+      "title" => "Novo cupom",
       "body" => body,
       "url" => "/"
     })

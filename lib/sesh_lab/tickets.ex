@@ -20,7 +20,7 @@ defmodule SeshLab.Tickets do
 
   import Ecto.Query
 
-  alias SeshLab.{Clock, Coupons, Notifications, Repo}
+  alias SeshLab.{Clock, Coupons, Editions, Notifications, Repo}
   alias SeshLab.Editions.TicketType
   alias SeshLab.Tickets.{Order, OrderItem, Ticket}
   alias Ecto.Multi
@@ -237,6 +237,84 @@ defmodule SeshLab.Tickets do
     end
   end
 
+  @typedoc "input to issue_confirmed/2"
+  @type comp_input :: %{
+          required(:edition_id) => Ecto.UUID.t(),
+          required(:ticket_type_id) => Ecto.UUID.t(),
+          required(:customer_name) => String.t(),
+          required(:customer_instagram) => String.t(),
+          required(:quantity) => pos_integer()
+        }
+
+  @doc """
+  Emits a confirmed order with N real tickets against a lote, decrementing its
+  `available` atomically (relative + clamp at 0). Unlike confirm_order/2 this does
+  NOT gate on `is_active`, so it works for cortesia lotes. Bypasses sale window and
+  the pending-hold flow by design. `opts[:notify?]` (default false) broadcasts
+  :new_order so the dashboard refreshes. `opts[:code_fun]` injects the code
+  generator (collision tests). Admin emission is authoritative over the comp lote's
+  headcount: never rolls back on shortage, available just clamps at 0.
+  """
+  @spec issue_confirmed(comp_input(), keyword()) ::
+          {:ok, %{order: Order.t(), codes: [String.t()]}}
+          | {:error, Ecto.Changeset.t() | term()}
+  def issue_confirmed(input, opts \\ []) do
+    notify? = Keyword.get(opts, :notify?, false)
+    code_fun = Keyword.get(opts, :code_fun, &generate_code/0)
+    qty = input.quantity
+    type = Editions.get_ticket_type!(input.ticket_type_id)
+
+    Repo.transaction(fn ->
+      order =
+        %Order{}
+        |> Order.changeset(%{
+          edition_id: input.edition_id,
+          customer_name: input.customer_name,
+          customer_instagram: input.customer_instagram,
+          total_cents: type.price_cents * qty,
+          status: :confirmed
+        })
+        |> Repo.insert()
+        |> case do
+          {:ok, order} -> order
+          {:error, cs} -> Repo.rollback(cs)
+        end
+
+      item =
+        %OrderItem{}
+        |> OrderItem.changeset(%{
+          order_id: order.id,
+          ticket_type_id: type.id,
+          ticket_type_name_snapshot: type.name,
+          quantity: qty,
+          unit_price_cents: type.price_cents
+        })
+        |> Repo.insert!()
+
+      from(t in TicketType,
+        where: t.id == ^type.id,
+        update: [set: [available: fragment("MAX(? - ?, 0)", t.available, ^qty)]]
+      )
+      |> Repo.update_all([])
+
+      codes =
+        for _ <- 1..qty//1 do
+          ticket = insert_ticket!(order, item, code_fun, 3)
+          ticket.code
+        end
+
+      %{order: order, codes: codes}
+    end)
+    |> case do
+      {:ok, %{order: order} = result} ->
+        if notify?, do: broadcast(:new_order, order.id)
+        {:ok, result}
+
+      {:error, _} = err ->
+        err
+    end
+  end
+
   # Atomic conditional decrement at confirm time. Rolls the whole confirmation
   # back (no tickets, status stays pending) if any lot can't cover the quantity.
   defp claim_capacity!(%Order{items: items}) do
@@ -427,6 +505,38 @@ defmodule SeshLab.Tickets do
   end
 
   @doc """
+  Busca pedidos por handle do Instagram (prefixo, já normalizado lowercase/sem @)
+  ou por nome (substring, case-insensitive ASCII). Não filtra por edição — o ponto
+  é achar pedidos antigos/de outra edição (ex: alguém manda DM pedindo o link).
+
+  Termo < 2 chars devolve `[]`, pra não varrer a tabela inteira a cada tecla.
+
+  # ponytail: SQLite LIKE é case-insensitive só pra ASCII; nome com acento
+  # (José buscado como "jose") não casa. Handle é o identificador de fato e o
+  # caminho principal, então aceitável. Gatilho pra revisitar: precisar de busca
+  # accent-insensitive (aí vira coluna normalizada ou collation).
+  """
+  @spec search_orders(String.t(), keyword()) :: [Order.t()]
+  def search_orders(term, opts \\ []) when is_binary(term) do
+    term = String.trim(term)
+
+    if String.length(term) < 2 do
+      []
+    else
+      limit = Keyword.get(opts, :limit, 30)
+      handle = Order.normalize_handle(term) <> "%"
+      name_pat = "%" <> term <> "%"
+
+      Order
+      |> where([o], like(o.customer_name, ^name_pat) or like(o.customer_instagram, ^handle))
+      |> order_by(desc: :inserted_at)
+      |> limit(^limit)
+      |> Repo.all()
+      |> Repo.preload(:items)
+    end
+  end
+
+  @doc """
   Números da edição pro dashboard e pra porta:
   vendido confirmado / pendente segurando / disponível / validadas.
   """
@@ -438,9 +548,11 @@ defmodule SeshLab.Tickets do
           validated: non_neg_integer()
         }
   def stats(edition_id) do
+    # ponytail: stats headline = paid seats only; comps live in is_active:false
+    # lotes, still visible via stats_by_type/1.
     %{capacity: cap, available: avail} =
       from(t in TicketType,
-        where: t.edition_id == ^edition_id,
+        where: t.edition_id == ^edition_id and t.is_active,
         select: %{
           capacity: coalesce(sum(t.capacity), 0),
           available: coalesce(sum(t.available), 0)

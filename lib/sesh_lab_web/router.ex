@@ -68,8 +68,11 @@ defmodule SeshLabWeb.Router do
     live "/", Admin.DashboardLive, :index
     live "/edicoes/nova", Admin.EditionFormLive, :new
     live "/edicoes/:id", Admin.EditionFormLive, :edit
+    live "/edicoes/:id/cortesia", Admin.CortesiaLive, :index
     live "/pedidos/:id", Admin.OrderShowLive, :show
+    live "/buscar", Admin.OrderSearchLive, :index
     live "/validar", Admin.ScannerLive, :index
+    live "/validar/:edition_id", Admin.ScannerLive, :index
     live "/tocar", Admin.DjApplicationsLive, :index
 
     live "/cupons", Admin.CouponsLive, :index

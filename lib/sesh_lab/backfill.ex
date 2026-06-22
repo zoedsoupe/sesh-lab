@@ -33,7 +33,7 @@ defmodule SeshLab.Backfill do
   alias SeshLab.Repo
   alias SeshLab.Editions.{Edition, TicketType}
   alias SeshLab.Tickets
-  alias SeshLab.Tickets.{Order, OrderItem, Ticket}
+  alias SeshLab.Tickets.Order
 
   @spec run(integer(), [map()]) :: [map() | {:error, term(), map()}] | {:error, term()}
   def run(edition_number, buyers) when is_integer(edition_number) and is_list(buyers) do
@@ -119,46 +119,22 @@ defmodule SeshLab.Backfill do
 
       true ->
         type = Map.get(types, norm(lote))
-
-        case Repo.transaction(fn -> do_backfill(edition, type, buyer, qty) end) do
-          {:ok, result} -> result
-          {:error, reason} -> {:error, reason, buyer}
-        end
+        do_backfill(edition, type, buyer, qty)
     end
   end
 
   defp do_backfill(edition, type, buyer, qty) do
-    order =
-      %Order{}
-      |> Order.changeset(%{
-        edition_id: edition.id,
-        customer_name: buyer[:name],
-        customer_instagram: buyer[:instagram],
-        total_cents: type.price_cents * qty,
-        status: :confirmed
-      })
-      |> Repo.insert!()
-
-    %OrderItem{}
-    |> OrderItem.changeset(%{
-      order_id: order.id,
-      ticket_type_id: type.id,
-      ticket_type_name_snapshot: type.name,
-      quantity: qty,
-      unit_price_cents: type.price_cents
-    })
-    |> Repo.insert!()
-
-    # Abate a disponibilidade atomicamente (relativo + clamp em 0). SET absoluto
-    # a partir do `type` carregado em `run/2` é stale: vários compradores do mesmo
-    # lote se sobrescrevem e só o último decremento sobrevive.
-    from(t in TicketType,
-      where: t.id == ^type.id,
-      update: [set: [available: fragment("MAX(? - ?, 0)", t.available, ^qty)]]
-    )
-    |> Repo.update_all([])
-
-    codes = Enum.map(1..qty//1, fn _ -> insert_ticket!(edition, type, order) end)
+    {:ok, %{order: order, codes: codes}} =
+      Tickets.issue_confirmed(
+        %{
+          edition_id: edition.id,
+          ticket_type_id: type.id,
+          customer_name: buyer[:name],
+          customer_instagram: buyer[:instagram],
+          quantity: qty
+        },
+        notify?: false
+      )
 
     %{
       name: buyer[:name],
@@ -168,30 +144,5 @@ defmodule SeshLab.Backfill do
       order_id: order.id,
       url: order_url(order.id)
     }
-  end
-
-  # Mesma estratégia do Tickets.insert_ticket!: retry em colisão de código.
-  defp insert_ticket!(edition, type, order, attempts \\ 3) do
-    code = Tickets.generate_code()
-
-    %Ticket{
-      order_id: order.id,
-      ticket_type_id: type.id,
-      edition_id: edition.id,
-      code: code
-    }
-    |> Ecto.Changeset.change()
-    |> Ecto.Changeset.unique_constraint(:code)
-    |> Repo.insert()
-    |> case do
-      {:ok, _ticket} ->
-        code
-
-      {:error, %Ecto.Changeset{errors: [code: _]}} when attempts > 1 ->
-        insert_ticket!(edition, type, order, attempts - 1)
-
-      {:error, changeset} ->
-        raise Ecto.InvalidChangesetError, action: :insert, changeset: changeset
-    end
   end
 end

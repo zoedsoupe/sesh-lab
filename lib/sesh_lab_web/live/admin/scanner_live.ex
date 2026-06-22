@@ -12,8 +12,14 @@ defmodule SeshLabWeb.Admin.ScannerLive do
   alias SeshLab.{Clock, Editions, Tickets}
 
   @impl true
-  def mount(_params, _session, socket) do
-    edition = Editions.current_edition()
+  def mount(params, _session, socket) do
+    # Porta da edição selecionada no painel quando vier `:edition_id`; senão a
+    # publicada atual (link global do topo).
+    edition =
+      case params do
+        %{"edition_id" => id} -> Editions.get_edition!(id)
+        _ -> Editions.current_edition()
+      end
 
     if connected?(socket) and edition do
       Phoenix.PubSub.subscribe(SeshLab.PubSub, "door:#{edition.id}")
@@ -25,7 +31,7 @@ defmodule SeshLabWeb.Admin.ScannerLive do
        scanner: true,
        edition: edition,
        result: nil,
-       page_title: "porta"
+       page_title: "Porta"
      )
      |> load_stats()}
   end
@@ -40,9 +46,9 @@ defmodule SeshLabWeb.Admin.ScannerLive do
   def handle_event("camera_error", %{"name" => name}, socket) do
     msg =
       case name do
-        "NotAllowedError" -> "câmera negada. use o código manual abaixo."
-        "NotFoundError" -> "nenhuma câmera encontrada. use o código manual."
-        _ -> "não foi possível abrir a câmera. use o código manual."
+        "NotAllowedError" -> "Câmera negada. use o código manual abaixo."
+        "NotFoundError" -> "Nenhuma câmera encontrada. use o código manual."
+        _ -> "Não foi possível abrir a câmera. use o código manual."
       end
 
     {:noreply, put_flash(socket, :error, msg)}
@@ -77,7 +83,7 @@ defmodule SeshLabWeb.Admin.ScannerLive do
       %{name: name} -> name
     end
   rescue
-    Ecto.NoResultsError -> "ingresso"
+    Ecto.NoResultsError -> "Ingresso"
   end
 
   defp buyer_name(%{order: %{customer_name: name}}), do: name
@@ -93,22 +99,21 @@ defmodule SeshLabWeb.Admin.ScannerLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.admin flash={@flash}>
+    <Layouts.admin flash={@flash} back="Painel">
       <section id="scanner" phx-hook="Scanner" data-scanner class="scanner stack-4">
         <div class="row space-between align-baseline">
-          <a href={~p"/admin"} class="text-xs text-dim">← painel</a>
           <span :if={@stats} class="text-mono text-sm">
             validadas {@stats.validated} / vendidas {@stats.sold_confirmed}
           </span>
         </div>
 
         <p :if={is_nil(@edition)} class="text-sm text-dim">
-          nenhuma edição publicada. publique uma edição pra abrir a porta.
+          Nenhuma edição publicada. publique uma edição pra abrir a porta.
         </p>
 
         <%= if @edition do %>
           <header class="stack-1">
-            <h1 class="text-xl text-mono">porta — {@edition.name}</h1>
+            <h1 class="text-xl text-mono">Porta — {@edition.name}</h1>
           </header>
 
           <div id="cam-wrap" phx-update="ignore" class="scanner-cam">
@@ -116,12 +121,12 @@ defmodule SeshLabWeb.Admin.ScannerLive do
           </div>
 
           <button type="button" data-scanner-activate class="btn btn--primary btn--block">
-            ativar câmera
+            Ativar câmera
           </button>
 
           <form phx-submit="manual" class="stack-2">
             <label class="field stack-1">
-              <span class="field-label text-xs text-muted">código manual</span>
+              <span class="field-label text-xs text-muted">Código manual</span>
               <input
                 type="text"
                 name="code"
@@ -131,7 +136,7 @@ defmodule SeshLabWeb.Admin.ScannerLive do
                 class="field-input text-mono"
               />
             </label>
-            <.button type="submit" variant={:ghost} class="btn--block">validar código</.button>
+            <.button type="submit" variant={:ghost} class="btn--block">Validar código</.button>
           </form>
         <% end %>
 
@@ -148,16 +153,16 @@ defmodule SeshLabWeb.Admin.ScannerLive do
                 <span class="scan-result-mark">✓</span>
                 <span class="text-xl text-mono">{@result.lote}</span>
                 <span :if={@result.name != ""} class="text-base">{@result.name}</span>
-                <span class="text-sm text-dim">entrou {Clock.format(@result.at, :time)}</span>
+                <span class="text-sm text-dim">Entrou {Clock.format(@result.at, :time)}</span>
               <% :already_used -> %>
                 <span class="scan-result-mark">✕</span>
-                <span class="text-xl text-mono">já validado</span>
-                <span class="text-sm">às {Clock.format(@result.at, :time)}</span>
+                <span class="text-xl text-mono">Já validado</span>
+                <span class="text-sm">Às {Clock.format(@result.at, :time)}</span>
               <% :not_found -> %>
                 <span class="scan-result-mark">✕</span>
-                <span class="text-xl text-mono">não encontrado</span>
+                <span class="text-xl text-mono">Não encontrado</span>
             <% end %>
-            <span class="text-xs text-dim">toque pra continuar</span>
+            <span class="text-xs text-dim">Toque pra continuar</span>
           </div>
         </div>
       </section>
