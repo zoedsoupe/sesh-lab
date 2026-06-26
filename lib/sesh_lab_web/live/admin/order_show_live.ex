@@ -3,6 +3,7 @@ defmodule SeshLabWeb.Admin.OrderShowLive do
 
   alias SeshLab.{Clock, Tickets}
   alias SeshLab.Tickets.Ticket
+  alias SeshLab.Merch.Unit
   alias SeshLabWeb.Instagram
 
   @topic "admin:orders"
@@ -34,7 +35,13 @@ defmodule SeshLabWeb.Admin.OrderShowLive do
       {:error, {:sold_out, _id}} ->
         {:noreply,
          socket
-         |> put_flash(:error, "Ingressos esgotaram antes da confirmação. pedido segue pendente.")
+         |> put_flash(:error, "Ingressos esgotaram antes da confirmação. Pedido segue pendente.")
+         |> reload()}
+
+      {:error, {:merch_sold_out, _id}} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Produto esgotou antes da confirmação. Pedido segue pendente.")
          |> reload()}
 
       {:error, _} ->
@@ -75,7 +82,7 @@ defmodule SeshLabWeb.Admin.OrderShowLive do
 
         <ul class="stack-2">
           <li :for={item <- @order.items} class="row space-between text-sm">
-            <span>{item.quantity}x {item.ticket_type_name_snapshot}</span>
+            <span>{item.quantity}x {SeshLab.Tickets.OrderItem.line_name(item)}</span>
             <span class="text-mono">{money(item.unit_price_cents * item.quantity)}</span>
           </li>
         </ul>
@@ -101,7 +108,7 @@ defmodule SeshLabWeb.Admin.OrderShowLive do
           <.button phx-click="confirm" class="btn--block">Confirmar pagamento</.button>
           <.button
             phx-click="cancel"
-            data-confirm="cancelar e devolver capacidade?"
+            data-confirm="Cancelar e devolver capacidade?"
             variant={:danger}
             class="btn--block"
           >
@@ -112,7 +119,7 @@ defmodule SeshLabWeb.Admin.OrderShowLive do
         <div :if={@order.status == :confirmed} class="stack-2">
           <.button
             phx-click="cancel"
-            data-confirm="cancelar pedido confirmado? isso apaga os ingressos emitidos."
+            data-confirm="Cancelar pedido confirmado? Isso apaga os ingressos e produtos emitidos."
             variant={:danger}
             class="btn--block"
           >
@@ -129,6 +136,21 @@ defmodule SeshLabWeb.Admin.OrderShowLive do
                 Validado {Clock.format(t.used_at, :time)}
               </span>
               <span :if={is_nil(t.used_at)} class="text-xs text-dim">Não usado</span>
+            </li>
+          </ul>
+        </section>
+
+        <section :if={@order.merch_units != []} class="stack-2">
+          <h2 class="text-sm text-muted">Produtos emitidos ({length(@order.merch_units)})</h2>
+          <ul class="stack-1">
+            <li :for={u <- @order.merch_units} class="row space-between text-sm">
+              <span>
+                <span class="text-mono">{Unit.display_code(u)}</span> · {u.merch_item_name_snapshot}
+              </span>
+              <span :if={u.redeemed_at} class="text-xs text-dim">
+                Retirado {Clock.format(u.redeemed_at, :time)}
+              </span>
+              <span :if={is_nil(u.redeemed_at)} class="text-xs text-dim">Não retirado</span>
             </li>
           </ul>
         </section>

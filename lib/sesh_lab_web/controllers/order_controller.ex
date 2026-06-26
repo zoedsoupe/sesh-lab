@@ -1,7 +1,7 @@
 defmodule SeshLabWeb.OrderController do
   use SeshLabWeb, :controller
 
-  alias SeshLab.{Clock, Coupons, Editions, Tickets}
+  alias SeshLab.{Clock, Coupons, Editions, Merch, Tickets}
   alias SeshLab.Editions.{Edition, TicketType}
   alias SeshLab.Tickets.Order
   alias SeshLab.Payments.Pix
@@ -21,6 +21,7 @@ defmodule SeshLabWeb.OrderController do
   def create(conn, params) do
     order_params = Map.get(params, "order", %{})
     items_params = Map.get(params, "items", %{})
+    merch_params = Map.get(params, "merch", %{})
 
     case Editions.current_edition() do
       nil ->
@@ -29,7 +30,7 @@ defmodule SeshLabWeb.OrderController do
         |> redirect(to: ~p"/")
 
       %Edition{} = edition ->
-        case Tickets.create_order(build_attrs(edition, order_params, items_params)) do
+        case Tickets.create_order(build_attrs(edition, order_params, items_params, merch_params)) do
           {:ok, order} ->
             redirect(conn, to: ~p"/compra/#{order.id}")
 
@@ -50,6 +51,21 @@ defmodule SeshLabWeb.OrderController do
             |> put_flash(:error, "Escolha pelo menos um ingresso.")
             |> render_form(reload(edition), changeset(order_params), items_params)
 
+          {:error, {:unknown_merch_item, _id}} ->
+            conn
+            |> put_flash(:error, "Produto indisponível.")
+            |> render_form(reload(edition), changeset(order_params), items_params)
+
+          {:error, {:merch_unavailable, _id}} ->
+            conn
+            |> put_flash(:error, "Produto indisponível.")
+            |> render_form(reload(edition), changeset(order_params), items_params)
+
+          {:error, {:merch_sold_out, _id}} ->
+            conn
+            |> put_flash(:error, "Produto esgotado.")
+            |> render_form(reload(edition), changeset(order_params), items_params)
+
           {:error, {:coupon, reason}} ->
             conn
             |> put_flash(:error, coupon_error(reason))
@@ -68,10 +84,11 @@ defmodule SeshLabWeb.OrderController do
 
   def show(conn, %{"id" => id}) do
     order = Tickets.get_order!(id)
-    edition = Editions.get_edition!(order.edition_id)
+    edition = order.edition_id && Editions.get_edition!(order.edition_id)
 
     conn
-    |> assign(:accent, edition.accent_color)
+    |> assign(:accent, edition && edition.accent_color)
+    |> assign(:no_index, true)
     |> render(:show,
       order: order,
       edition: edition,
@@ -84,7 +101,9 @@ defmodule SeshLabWeb.OrderController do
   # Static shell — the list is rendered client-side from localStorage
   # (assets/js/orders.js). No DB query, no PII server-side.
   def history(conn, _params) do
-    render(conn, :history, page_title: "Meus ingressos")
+    conn
+    |> assign(:no_index, true)
+    |> render(:history, page_title: "Meus ingressos")
   end
 
   # ── helpers ─────────────────────────────────────────────────────────────────
@@ -100,6 +119,7 @@ defmodule SeshLabWeb.OrderController do
       edition: edition,
       changeset: changeset,
       lots: lots_on_sale(edition),
+      merch: Merch.list_featured_items(edition.id),
       items: normalize_items_param(items),
       page_title: "Comprar — #{edition.name}"
     )
@@ -113,15 +133,20 @@ defmodule SeshLabWeb.OrderController do
     |> Enum.sort_by(& &1.position)
   end
 
-  defp build_attrs(edition, order_params, items_params) do
-    items =
+  defp build_attrs(edition, order_params, items_params, merch_params) do
+    ticket_lines =
       items_params
       |> Enum.map(fn {type_id, qty} -> %{ticket_type_id: type_id, quantity: qty} end)
       |> Enum.reject(&(&1.quantity in ["", "0", 0, nil]))
 
+    merch_lines =
+      merch_params
+      |> Enum.map(fn {item_id, qty} -> %{merch_item_id: item_id, quantity: qty} end)
+      |> Enum.reject(&(&1.quantity in ["", "0", 0, nil]))
+
     order_params
     |> Map.put("edition_id", edition.id)
-    |> Map.put("items", items)
+    |> Map.put("items", ticket_lines ++ merch_lines)
     |> Map.put("pix_key", Application.fetch_env!(:sesh_lab, :pix)[:key])
     |> Map.put("status", "pending")
   end

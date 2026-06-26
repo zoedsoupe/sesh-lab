@@ -26,6 +26,26 @@
     <.live_title default="SESH LAB.">
       {assigns[:page_title]}
     </.live_title>
+    <% seo = SeshLabWeb.SEO.build(assigns, unverified_url(@conn, @conn.request_path)) %>
+    <meta name="description" content={seo.description} />
+    <meta :if={seo.no_index} name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href={seo.url} />
+
+    <meta property="og:type" content={seo.type} />
+    <meta property="og:site_name" content={seo.site_name} />
+    <meta property="og:title" content={seo.title} />
+    <meta property="og:description" content={seo.description} />
+    <meta property="og:url" content={seo.url} />
+    <meta :if={seo.image} property="og:image" content={seo.image} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={seo.title} />
+    <meta name="twitter:description" content={seo.description} />
+    <meta :if={seo.image} name="twitter:image" content={seo.image} />
+
+    <script :if={assigns[:jsonld]} type="application/ld+json">
+      {Phoenix.HTML.raw(@jsonld)}
+    </script>
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
     <script
       :if={assigns[:scanner]}

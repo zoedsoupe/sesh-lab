@@ -1,0 +1,42 @@
+<Layouts.app flash={@flash}>
+  <.form :let={f} for={@changeset} action={~p"/loja"} class="stack-5 store-form" id="loja-form">
+    <input type="hidden" name="order[client_endpoint]" data-client-endpoint />
+
+    <header class="stack-1">
+      <h1 class="text-xl text-mono">Loja</h1>
+      <p class="text-xs text-dim">Produtos da SESH. Escolha, finalize e pague no PIX.</p>
+    </header>
+
+    <p :if={@merch == []} class="text-sm text-dim">
+      Nenhum produto disponivel agora. Volta logo.
+    </p>
+
+    <ul :if={@merch != []} class="store-grid stack-3">
+      <.store_card items={@merch} qtys={@items} />
+    </ul>
+
+    <section :if={@merch != []} class="stack-3">
+      <h2 class="text-sm text-muted">Seus dados</h2>
+      <.input field={f[:customer_name]} label="Nome" required autocomplete="name" />
+      <.input
+        field={f[:customer_instagram]}
+        type="text"
+        label="Instagram (sem o @)"
+        required
+        autocomplete="off"
+        placeholder="seu.usuario"
+      />
+      <label class="field field--inline">
+        <input type="checkbox" id="remember-me" data-remember class="checkbox" />
+        <span class="field-label">Lembrar meus dados neste aparelho</span>
+      </label>
+    </section>
+
+    <%!-- Sticky finish bar; plain submit, no live total. --%>
+    <div :if={@merch != []} class="store-finish-bar">
+      <.button type="submit" variant={:primary} class="btn--block btn--blob">
+        Finalizar pedido
+      </.button>
+    </div>
+  </.form>
+</Layouts.app>

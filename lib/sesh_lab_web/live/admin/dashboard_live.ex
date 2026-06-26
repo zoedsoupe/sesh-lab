@@ -69,6 +69,8 @@ defmodule SeshLabWeb.Admin.DashboardLive do
     )
   end
 
+  # Pedidos da loja (/loja) tem edition_id nil e nao aparecem nestas listas por
+  # edicao; ficam no historico global /admin/buscar e em /admin/pedidos/:id.
   defp edition_orders(orders, edition_id), do: Enum.filter(orders, &(&1.edition_id == edition_id))
 
   defp lote_stats(by_type, type) do
@@ -96,8 +98,9 @@ defmodule SeshLabWeb.Admin.DashboardLive do
           <a href={~p"/admin/edicoes/nova"} class="admin-action admin-action--primary">
             + Nova edição
           </a>
-          <a href={~p"/admin/buscar"} class="admin-action">Buscar</a>
+          <a href={~p"/admin/buscar"} class="admin-action">Pedidos</a>
           <a href={~p"/admin/cupons"} class="admin-action">Cupons</a>
+          <a href={~p"/admin/produtos"} class="admin-action">Produtos</a>
         </nav>
 
         <p :if={@editions == []} class="text-sm text-dim">
@@ -128,6 +131,7 @@ defmodule SeshLabWeb.Admin.DashboardLive do
                 <h2 class="text-sm text-muted">{@edition.name}</h2>
                 <div class="row gap-3">
                   <a href={~p"/admin/validar/#{@edition.id}"} class="text-xs text-accent">Porta</a>
+                  <a href={~p"/admin/balcao"} class="text-xs text-accent">Balcão</a>
                   <a
                     href={~p"/admin/edicoes/#{@edition.id}/cortesia"}
                     class="text-xs text-accent"
@@ -137,6 +141,11 @@ defmodule SeshLabWeb.Admin.DashboardLive do
                   <a href={~p"/admin/tocar"} class="text-xs text-accent">Aplicações DJ</a>
                   <a href={~p"/admin/edicoes/#{@edition.id}"} class="text-xs text-accent">Editar</a>
                 </div>
+              </div>
+
+              <div class="row space-between align-baseline">
+                <span class="text-xs text-muted">Receita confirmada</span>
+                <span class="text-mono text-xl text-accent">{money(@stats.revenue_cents)}</span>
               </div>
 
               <div class="stats-grid">
@@ -163,7 +172,7 @@ defmodule SeshLabWeb.Admin.DashboardLive do
                         {Enum.map_join(
                           o.items,
                           " · ",
-                          &"#{&1.quantity}× #{&1.ticket_type_name_snapshot}"
+                          &"#{&1.quantity}× #{SeshLab.Tickets.OrderItem.line_name(&1)}"
                         )}
                       </span>
                       <span>{Clock.format(o.inserted_at, :time)}</span>

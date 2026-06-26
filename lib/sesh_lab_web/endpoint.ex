@@ -27,7 +27,7 @@ defmodule SeshLabWeb.Endpoint do
         {:sesh_lab, "priv/static/uploads"}
       ),
     gzip: false,
-    only: ~w(editions)
+    only: ~w(editions merch)
 
   # Serve at "/" the static files from "priv/static" directory.
   #

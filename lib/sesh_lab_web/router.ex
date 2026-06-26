@@ -41,9 +41,13 @@ defmodule SeshLabWeb.Router do
     post "/comprar", OrderController, :create
     get "/compra/:id", OrderController, :show
     get "/meus-ingressos", OrderController, :history
+    get "/loja", LojaController, :index
+    post "/loja", LojaController, :create
     get "/sobre", PageController, :sobre
     get "/avisos", PageController, :avisos
     get "/tocar", DjController, :new
+    get "/robots.txt", SeoController, :robots
+    get "/sitemap.xml", SeoController, :sitemap
   end
 
   scope "/", SeshLabWeb do
@@ -80,6 +84,11 @@ defmodule SeshLabWeb.Router do
     live "/cupons/regras/nova", Admin.CouponRuleFormLive, :new
     live "/cupons/regras/:id", Admin.CouponRuleFormLive, :edit
     live "/cupons/:id", Admin.CouponFormLive, :edit
+
+    live "/produtos", Admin.ProductsLive, :index
+    live "/produtos/novo", Admin.ProductFormLive, :new
+    live "/produtos/:id", Admin.ProductFormLive, :edit
+    live "/balcao", Admin.BalcaoLive, :index
   end
 
   scope "/admin", SeshLabWeb do

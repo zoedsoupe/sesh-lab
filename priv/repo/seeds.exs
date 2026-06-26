@@ -71,4 +71,52 @@ upsert.(%{
 
 # Publica a #1 (vira a edição atual da landing; arquiva qualquer outra publicada).
 if ed1, do: {:ok, _} = Editions.publish(ed1)
+
+# ── Merch (catálogo global da loja) ───────────────────────────────────────────
+# Idempotente: pula itens cujo `name` já existe.
+alias SeshLab.Merch
+alias SeshLab.Merch.Item
+
+merch_upsert = fn attrs ->
+  if Repo.exists?(from(m in Item, where: m.name == ^attrs.name)) do
+    IO.puts("· merch “#{attrs.name}” já existe — pulando")
+  else
+    {:ok, item} = Merch.create_item(attrs)
+    IO.puts("✓ criado merch: #{item.name} (#{item.available}/#{item.stock})")
+  end
+end
+
+[
+  %{
+    name: "Bolsinha",
+    description: "lona, serigrafia da casa",
+    price_cents: 3000,
+    stock: 25,
+    position: 0
+  },
+  %{
+    name: "Adesivo",
+    description: "vinil holográfico, 8cm",
+    price_cents: 500,
+    stock: 200,
+    position: 1
+  },
+  %{
+    name: "Poster A3",
+    description: "fosco 250g, edição numerada",
+    price_cents: 2500,
+    stock: 40,
+    position: 2
+  },
+  %{
+    name: "Camiseta",
+    description: "preta, estampa SESH nas costas",
+    price_cents: 6000,
+    stock: 30,
+    position: 3,
+    is_active: false
+  }
+]
+|> Enum.each(merch_upsert)
+
 IO.puts("seeds ok")

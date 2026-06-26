@@ -2,7 +2,7 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
   use SeshLabWeb, :live_view
 
   alias Phoenix.LiveView.JS
-  alias SeshLab.{Clock, Editions, Notifications}
+  alias SeshLab.{Clock, Editions, Merch, Notifications}
   alias SeshLab.Editions.Edition
 
   @max_logo 2_000_000
@@ -34,8 +34,8 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
       {:ok, edition} ->
         {:noreply,
          socket
-         |> put_flash(:info, "Edição “#{edition.name}” criada. publique quando estiver pronta.")
-         |> push_navigate(to: ~p"/admin/edicoes/#{edition.id}")}
+         |> put_flash(:info, "Edição “#{edition.name}” criada. Publique quando estiver pronta.")
+         |> push_navigate(to: ~p"/admin")}
 
       {:error, changeset} ->
         {:noreply,
@@ -50,8 +50,8 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
     params = params |> to_utc() |> put_logo(socket, to_string(edition.number))
 
     case Editions.update_edition(edition, params) do
-      {:ok, edition} ->
-        {:noreply, socket |> put_flash(:info, "Edição salva.") |> assign_form(edition)}
+      {:ok, _edition} ->
+        {:noreply, socket |> put_flash(:info, "Edição salva.") |> push_navigate(to: ~p"/admin")}
 
       {:error, changeset} ->
         {:noreply,
@@ -90,6 +90,19 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
     {:noreply, socket |> put_flash(:info, "Logo removida.") |> assign_form(edition)}
   end
 
+  def handle_event("save_featured", %{"featured" => ids}, socket) do
+    ids = List.wrap(ids)
+    Editions.set_featured_merch(socket.assigns.edition.id, ids)
+
+    {:noreply,
+     socket |> put_flash(:info, "Produtos em destaque salvos.") |> assign(featured_ids: ids)}
+  end
+
+  def handle_event("save_featured", _params, socket) do
+    Editions.set_featured_merch(socket.assigns.edition.id, [])
+    {:noreply, socket |> put_flash(:info, "Destaques limpos.") |> assign(featured_ids: [])}
+  end
+
   # ── data ────────────────────────────────────────────────────────────────────
 
   defp assign_edition(socket, _params, :new), do: assign_form(socket, %Edition{ticket_types: []})
@@ -98,11 +111,25 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
     do: assign_form(socket, Editions.get_edition!(id))
 
   defp assign_form(socket, %Edition{} = edition) do
-    assign(socket,
+    socket
+    |> assign(
       edition: edition,
       page_title: edition.name || "Nova edição",
       starts_at_local: starts_at_local(edition.starts_at),
       form: to_form(Editions.change_edition(edition))
+    )
+    |> assign_featured_merch(edition)
+  end
+
+  # Featured-merch picker só faz sentido numa edição já criada (precisa de id).
+  defp assign_featured_merch(socket, %Edition{id: nil}) do
+    assign(socket, all_merch: [], featured_ids: [])
+  end
+
+  defp assign_featured_merch(socket, %Edition{id: id}) do
+    assign(socket,
+      all_merch: Merch.list_active_items(),
+      featured_ids: Editions.featured_merch_ids(id)
     )
   end
 
@@ -343,6 +370,26 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
             {if @live_action == :new, do: "Criar edição", else: "Salvar"}
           </.button>
         </.form>
+
+        <section :if={@live_action == :edit and @all_merch != []} class="stack-3">
+          <h2 class="text-sm text-muted">Produtos em destaque no /comprar</h2>
+          <p class="text-xs text-dim">
+            Só estes aparecem no formulário de ingresso. A loja mostra todos.
+          </p>
+          <form phx-submit="save_featured" class="stack-2" id="featured-merch-form">
+            <label :for={item <- @all_merch} class="field field--inline">
+              <input
+                type="checkbox"
+                name="featured[]"
+                value={item.id}
+                checked={item.id in @featured_ids}
+                class="checkbox"
+              />
+              <span class="field-label">{item.name} — {money(item.price_cents)}</span>
+            </label>
+            <.button type="submit" variant={:ghost} class="btn--block">Salvar destaques</.button>
+          </form>
+        </section>
 
         <div :if={@edition.id} class="stack-2">
           <.button

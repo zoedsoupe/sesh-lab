@@ -1,14 +1,27 @@
 defmodule SeshLabWeb.PageController do
   use SeshLabWeb, :controller
 
-  alias SeshLab.Editions
+  alias SeshLab.{Editions, Merch}
+  alias SeshLabWeb.SEO
 
   def index(conn, _params) do
     edition = Editions.current_edition()
+    logo = edition && SEO.abs_url(Editions.logo_url(edition.logo_path))
 
     conn
     |> assign(:accent, edition && edition.accent_color)
-    |> render(:index, edition: edition, page_title: edition && edition.name)
+    |> assign(
+      :seo_description,
+      edition && "#{edition.name} — #{edition.venue}. Ingressos abertos."
+    )
+    |> assign(:seo_image, logo)
+    |> assign(:seo_type, "website")
+    |> assign(:jsonld, SEO.music_event_jsonld(edition, logo))
+    |> render(:index,
+      edition: edition,
+      has_merch?: Merch.list_active_items() != [],
+      page_title: edition && edition.name
+    )
   end
 
   def sobre(conn, _params) do

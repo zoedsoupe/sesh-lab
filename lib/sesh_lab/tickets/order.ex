@@ -25,13 +25,14 @@ defmodule SeshLab.Tickets.Order do
 
     has_many :items, OrderItem, foreign_key: :order_id, on_delete: :delete_all
     has_many :tickets, Ticket, foreign_key: :order_id, on_delete: :delete_all
+    has_many :merch_units, SeshLab.Merch.Unit, foreign_key: :order_id, on_delete: :delete_all
 
     timestamps()
   end
 
   @castable ~w(edition_id customer_name customer_instagram total_cents coupon_code
                discount_cents status pix_key client_endpoint)a
-  @required ~w(edition_id customer_name customer_instagram total_cents)a
+  @required ~w(customer_name customer_instagram total_cents)a
 
   def changeset(order, attrs) do
     order

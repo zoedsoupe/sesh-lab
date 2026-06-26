@@ -43,15 +43,19 @@ defmodule SeshLab.Tickets do
           | {:error, {:not_on_sale, String.t()}}
           | {:error, :empty_cart}
           | {:error, {:unknown_ticket_type, String.t()}}
+          | {:error, {:unknown_merch_item, String.t()}}
+          | {:error, {:merch_unavailable, String.t()}}
+          | {:error, {:merch_sold_out, String.t()}}
           | {:error, {:coupon, term()}}
           | {:error, Ecto.Changeset.t()}
   def create_order(attrs) do
     items = normalize_items(attrs)
     types = preload_types(items)
+    merch = preload_merch(items)
 
-    case validate_items(items, types) do
+    case validate_items(items, types, merch) do
       :ok ->
-        subtotal = total_cents(items, types)
+        subtotal = total_cents(items, types, merch)
 
         case resolve_coupon(attrs, subtotal) do
           {:ok, coupon, discount} ->
@@ -64,7 +68,7 @@ defmodule SeshLab.Tickets do
             Multi.new()
             |> Multi.insert(:order, Order.changeset(%Order{}, order_attrs))
             |> Multi.insert_all(:items, OrderItem, fn %{order: order} ->
-              Enum.map(items, &item_attrs(&1, order, types))
+              Enum.map(items, &item_attrs(&1, order, types, merch))
             end)
             |> maybe_claim_coupon(coupon)
             |> Repo.transaction()
@@ -111,14 +115,30 @@ defmodule SeshLab.Tickets do
   end
 
   defp normalize_items(attrs) do
-    (attrs[:items] || attrs["items"] || [])
+    raw = attrs[:items] || attrs["items"] || []
+
+    raw
     |> Enum.map(fn item ->
-      %{
-        ticket_type_id: item[:ticket_type_id] || item["ticket_type_id"],
-        quantity: to_int(item[:quantity] || item["quantity"])
-      }
+      cond do
+        id = item[:ticket_type_id] || item["ticket_type_id"] ->
+          %{
+            kind: :ticket,
+            ticket_type_id: id,
+            quantity: to_int(item[:quantity] || item["quantity"])
+          }
+
+        id = item[:merch_item_id] || item["merch_item_id"] ->
+          %{
+            kind: :merch,
+            merch_item_id: id,
+            quantity: to_int(item[:quantity] || item["quantity"])
+          }
+
+        true ->
+          %{kind: :unknown, quantity: 0}
+      end
     end)
-    |> Enum.reject(&(&1.quantity in [0, nil]))
+    |> Enum.reject(&(&1.quantity in [0, nil] or &1.kind == :unknown))
   end
 
   defp to_int(n) when is_integer(n), do: n
@@ -126,7 +146,7 @@ defmodule SeshLab.Tickets do
   defp to_int(_), do: 0
 
   defp preload_types(items) do
-    ids = Enum.map(items, & &1.ticket_type_id)
+    ids = for %{kind: :ticket, ticket_type_id: id} <- items, do: id
 
     TicketType
     |> where([t], t.id in ^ids)
@@ -134,44 +154,86 @@ defmodule SeshLab.Tickets do
     |> Map.new(&{&1.id, &1})
   end
 
-  defp validate_items([], _), do: {:error, :empty_cart}
+  defp preload_merch(items) do
+    ids = for %{kind: :merch, merch_item_id: id} <- items, do: id
+
+    SeshLab.Merch.Item
+    |> where([m], m.id in ^ids)
+    |> Repo.all()
+    |> Map.new(&{&1.id, &1})
+  end
+
+  defp validate_items([], _types, _merch), do: {:error, :empty_cart}
 
   # Soft gate at order time (good UX): reject obvious sold-out / closed lots.
   # Não é autoritativo — dois pendentes podem passar no mesmo último lugar; a
   # baixa atômica em `confirm_order/2` é quem decide de verdade.
-  defp validate_items(items, types) do
+  defp validate_items(items, types, merch) do
     now = Clock.now_utc()
 
-    Enum.reduce_while(items, :ok, fn %{ticket_type_id: id, quantity: q}, _ ->
-      case Map.get(types, id) do
-        nil ->
-          {:halt, {:error, {:unknown_ticket_type, id}}}
+    Enum.reduce_while(items, :ok, fn item, _ ->
+      case item do
+        %{kind: :ticket, ticket_type_id: id, quantity: q} ->
+          case Map.get(types, id) do
+            nil ->
+              {:halt, {:error, {:unknown_ticket_type, id}}}
 
-        %TicketType{} = type ->
-          cond do
-            not TicketType.on_sale?(type, now) -> {:halt, {:error, {:not_on_sale, id}}}
-            type.available < q -> {:halt, {:error, {:sold_out, id}}}
-            true -> {:cont, :ok}
+            %TicketType{} = type ->
+              cond do
+                not TicketType.on_sale?(type, now) -> {:halt, {:error, {:not_on_sale, id}}}
+                type.available < q -> {:halt, {:error, {:sold_out, id}}}
+                true -> {:cont, :ok}
+              end
+          end
+
+        %{kind: :merch, merch_item_id: id, quantity: q} ->
+          case Map.get(merch, id) do
+            nil -> {:halt, {:error, {:unknown_merch_item, id}}}
+            %{is_active: false} -> {:halt, {:error, {:merch_unavailable, id}}}
+            %{available: avail} when avail < q -> {:halt, {:error, {:merch_sold_out, id}}}
+            _ -> {:cont, :ok}
           end
       end
     end)
   end
 
-  defp total_cents(items, types) do
-    Enum.reduce(items, 0, fn %{ticket_type_id: id, quantity: q}, acc ->
-      acc + types[id].price_cents * q
+  defp total_cents(items, types, merch) do
+    Enum.reduce(items, 0, fn item, acc ->
+      case item do
+        %{kind: :ticket, ticket_type_id: id, quantity: q} -> acc + types[id].price_cents * q
+        %{kind: :merch, merch_item_id: id, quantity: q} -> acc + merch[id].price_cents * q
+      end
     end)
   end
 
-  defp item_attrs(%{ticket_type_id: id, quantity: q}, order, types) do
+  # Both clauses emit the same column set (irrelevant FK left nil) so insert_all
+  # gets uniform row maps; SQLite rejects cell-wise defaults from ragged maps.
+  defp item_attrs(%{kind: :ticket, ticket_type_id: id, quantity: q}, order, types, _merch) do
     type = types[id]
 
     %{
       order_id: order.id,
       ticket_type_id: id,
       ticket_type_name_snapshot: type.name,
+      merch_item_id: nil,
+      merch_item_name_snapshot: nil,
       quantity: q,
       unit_price_cents: type.price_cents,
+      inserted_at: Clock.now_utc() |> DateTime.to_naive()
+    }
+  end
+
+  defp item_attrs(%{kind: :merch, merch_item_id: id, quantity: q}, order, _types, merch) do
+    m = merch[id]
+
+    %{
+      order_id: order.id,
+      ticket_type_id: nil,
+      ticket_type_name_snapshot: nil,
+      merch_item_id: id,
+      merch_item_name_snapshot: m.name,
+      quantity: q,
+      unit_price_cents: m.price_cents,
       inserted_at: Clock.now_utc() |> DateTime.to_naive()
     }
   end
@@ -208,6 +270,7 @@ defmodule SeshLab.Tickets do
           {:ok, Order.t()}
           | {:error, :not_pending}
           | {:error, {:sold_out, String.t()}}
+          | {:error, {:merch_sold_out, String.t()}}
           | {:error, term()}
   def confirm_order(id, opts \\ []) do
     code_fun = Keyword.get(opts, :code_fun, &generate_code/0)
@@ -217,7 +280,9 @@ defmodule SeshLab.Tickets do
         :ok ->
           order = get_order!(id)
           claim_capacity!(order)
+          claim_merch!(order)
           issue_tickets(order, code_fun)
+          mint_merch(order, code_fun)
           order
 
         :stale ->
@@ -318,7 +383,9 @@ defmodule SeshLab.Tickets do
   # Atomic conditional decrement at confirm time. Rolls the whole confirmation
   # back (no tickets, status stays pending) if any lot can't cover the quantity.
   defp claim_capacity!(%Order{items: items}) do
-    Enum.each(items, fn %OrderItem{ticket_type_id: id, quantity: q} ->
+    items
+    |> Enum.filter(&OrderItem.ticket?/1)
+    |> Enum.each(fn %OrderItem{ticket_type_id: id, quantity: q} ->
       query = from t in TicketType, where: t.id == ^id and t.available >= ^q and t.is_active
 
       case Repo.update_all(query, inc: [available: -q]) do
@@ -328,9 +395,26 @@ defmodule SeshLab.Tickets do
     end)
   end
 
+  # Atomic merch stock claim at confirm time, parallel to claim_capacity!/1.
+  # Queries Merch.Item; a shortage rolls the whole confirmation back.
+  defp claim_merch!(%Order{items: items}) do
+    items
+    |> Enum.filter(&OrderItem.merch?/1)
+    |> Enum.each(fn %OrderItem{merch_item_id: id, quantity: q} ->
+      query = from m in SeshLab.Merch.Item, where: m.id == ^id and m.available >= ^q
+
+      case Repo.update_all(query, inc: [available: -q]) do
+        {1, _} -> :ok
+        {0, _} -> Repo.rollback({:merch_sold_out, id})
+      end
+    end)
+  end
+
   # Fire soldout notification for any lot this confirmation drove to zero.
   defp detect_soldout(%Order{items: items}) do
-    Enum.each(items, fn %OrderItem{ticket_type_id: id} ->
+    items
+    |> Enum.filter(&OrderItem.ticket?/1)
+    |> Enum.each(fn %OrderItem{ticket_type_id: id} ->
       case Repo.get(TicketType, id) do
         %TicketType{available: 0} = type ->
           broadcast(:soldout, type.id)
@@ -343,11 +427,18 @@ defmodule SeshLab.Tickets do
   end
 
   defp issue_tickets(%Order{} = order, code_fun) do
-    Enum.each(order.items, fn %OrderItem{} = item ->
+    order.items
+    |> Enum.filter(&OrderItem.ticket?/1)
+    |> Enum.each(fn %OrderItem{} = item ->
       for _ <- 1..item.quantity do
         insert_ticket!(order, item, code_fun, _attempts = 3)
       end
     end)
+  end
+
+  defp mint_merch(%Order{} = order, code_fun) do
+    merch_lines = Enum.filter(order.items, &OrderItem.merch?/1)
+    SeshLab.Merch.mint_units(order, merch_lines, code_fun)
   end
 
   defp insert_ticket!(order, item, code_fun, attempts) do
@@ -442,7 +533,9 @@ defmodule SeshLab.Tickets do
         transition(id, from: :confirmed, to: :cancelled) == :ok ->
           order = get_order!(id)
           restore_capacity(order)
+          restore_merch(order)
           from(t in Ticket, where: t.order_id == ^order.id) |> Repo.delete_all()
+          from(u in SeshLab.Merch.Unit, where: u.order_id == ^order.id) |> Repo.delete_all()
           order
 
         true ->
@@ -473,8 +566,19 @@ defmodule SeshLab.Tickets do
   end
 
   defp restore_capacity(%Order{items: items}) do
-    Enum.each(items, fn %OrderItem{ticket_type_id: id, quantity: q} ->
+    items
+    |> Enum.filter(&OrderItem.ticket?/1)
+    |> Enum.each(fn %OrderItem{ticket_type_id: id, quantity: q} ->
       from(t in TicketType, where: t.id == ^id)
+      |> Repo.update_all(inc: [available: q])
+    end)
+  end
+
+  defp restore_merch(%Order{items: items}) do
+    items
+    |> Enum.filter(&OrderItem.merch?/1)
+    |> Enum.each(fn %OrderItem{merch_item_id: id, quantity: q} ->
+      from(m in SeshLab.Merch.Item, where: m.id == ^id)
       |> Repo.update_all(inc: [available: q])
     end)
   end
@@ -483,7 +587,7 @@ defmodule SeshLab.Tickets do
 
   @spec get_order!(Ecto.UUID.t()) :: Order.t()
   def get_order!(id) do
-    Order |> Repo.get!(id) |> Repo.preload([:items, :tickets])
+    Order |> Repo.get!(id) |> Repo.preload([:items, :tickets, :merch_units])
   end
 
   @spec list_recent(non_neg_integer()) :: [Order.t()]
@@ -545,6 +649,7 @@ defmodule SeshLab.Tickets do
           available: non_neg_integer(),
           held_pending: non_neg_integer(),
           sold_confirmed: non_neg_integer(),
+          revenue_cents: non_neg_integer(),
           validated: non_neg_integer()
         }
   def stats(edition_id) do
@@ -564,7 +669,9 @@ defmodule SeshLab.Tickets do
       from(i in OrderItem,
         join: o in Order,
         on: o.id == i.order_id,
-        where: o.edition_id == ^edition_id and o.status == :pending,
+        where:
+          o.edition_id == ^edition_id and o.status == :pending and
+            not is_nil(i.ticket_type_id),
         select: coalesce(sum(i.quantity), 0)
       )
       |> Repo.one()
@@ -573,7 +680,9 @@ defmodule SeshLab.Tickets do
       from(i in OrderItem,
         join: o in Order,
         on: o.id == i.order_id,
-        where: o.edition_id == ^edition_id and o.status == :confirmed,
+        where:
+          o.edition_id == ^edition_id and o.status == :confirmed and
+            not is_nil(i.ticket_type_id),
         select: coalesce(sum(i.quantity), 0)
       )
       |> Repo.one()
@@ -585,11 +694,21 @@ defmodule SeshLab.Tickets do
       )
       |> Repo.one()
 
+    # Revenue = total actually charged on confirmed orders (post-coupon), so
+    # order-level discounts are reflected. Per-lote revenue would sum OrderItem.
+    revenue =
+      from(o in Order,
+        where: o.edition_id == ^edition_id and o.status == :confirmed,
+        select: coalesce(sum(o.total_cents), 0)
+      )
+      |> Repo.one()
+
     %{
       capacity: cap,
       available: avail,
       held_pending: held,
       sold_confirmed: sold,
+      revenue_cents: revenue,
       validated: validated
     }
   end
@@ -614,7 +733,9 @@ defmodule SeshLab.Tickets do
       from(i in OrderItem,
         join: o in Order,
         on: o.id == i.order_id,
-        where: o.edition_id == ^edition_id and o.status in [:pending, :confirmed],
+        where:
+          o.edition_id == ^edition_id and o.status in [:pending, :confirmed] and
+            not is_nil(i.ticket_type_id),
         group_by: [i.ticket_type_id, o.status],
         select: {i.ticket_type_id, o.status, coalesce(sum(i.quantity), 0)}
       )

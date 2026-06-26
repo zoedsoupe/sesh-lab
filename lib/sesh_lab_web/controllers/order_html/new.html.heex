@@ -31,7 +31,15 @@
       </ul>
     </section>
 
-    <section :if={@lots != []} class="stack-3">
+    <section :if={@merch != []} class="stack-3">
+      <h2 class="text-sm text-muted">Leve também</h2>
+
+      <ul class="stack-3">
+        <.merch_row merch={@merch} items={@items} />
+      </ul>
+    </section>
+
+    <section :if={@lots != [] or @merch != []} class="stack-3">
       <h2 class="text-sm text-muted">Seus dados</h2>
 
       <.input field={f[:customer_name]} label="Nome" required autocomplete="name" />
@@ -63,7 +71,12 @@
       </label>
     </section>
 
-    <.button :if={@lots != []} type="submit" variant={:primary} class="btn--block btn--blob">
+    <.button
+      :if={@lots != [] or @merch != []}
+      type="submit"
+      variant={:primary}
+      class="btn--block btn--blob"
+    >
       Ir pro PIX
     </.button>
 

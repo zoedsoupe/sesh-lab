@@ -10,7 +10,7 @@ defmodule SeshLab.Editions do
   import Ecto.Query
 
   alias SeshLab.{Clock, Repo}
-  alias SeshLab.Editions.{Edition, TicketType}
+  alias SeshLab.Editions.{Edition, EditionMerchItem, TicketType}
 
   # ── Queries ─────────────────────────────────────────────────────────────────
 
@@ -99,6 +99,34 @@ defmodule SeshLab.Editions do
 
   defp broadcast(msg) do
     Phoenix.PubSub.broadcast(SeshLab.PubSub, "editions", msg)
+  end
+
+  # ── Merch em destaque por edição ────────────────────────────────────────────
+
+  @doc "IDs de merch destacados numa edicao."
+  @spec featured_merch_ids(Ecto.UUID.t()) :: [Ecto.UUID.t()]
+  def featured_merch_ids(edition_id) do
+    from(e in EditionMerchItem, where: e.edition_id == ^edition_id, select: e.merch_item_id)
+    |> Repo.all()
+  end
+
+  @doc "Substitui o conjunto de merch destacado de uma edicao (delete-all + insert)."
+  @spec set_featured_merch(Ecto.UUID.t(), [Ecto.UUID.t()]) :: :ok
+  def set_featured_merch(edition_id, merch_item_ids) do
+    now = Clock.now_utc() |> DateTime.to_naive()
+
+    Repo.transaction(fn ->
+      from(e in EditionMerchItem, where: e.edition_id == ^edition_id) |> Repo.delete_all()
+
+      rows =
+        Enum.map(merch_item_ids, fn id ->
+          %{edition_id: edition_id, merch_item_id: id, inserted_at: now}
+        end)
+
+      if rows != [], do: Repo.insert_all(EditionMerchItem, rows)
+    end)
+
+    :ok
   end
 
   # ── Uploads (logo por edição) ───────────────────────────────────────────────

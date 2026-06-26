@@ -67,7 +67,15 @@
       Ativa os avisos pra ser a primeira a saber quando os ingressos abrirem.
     </p>
 
-    <a href={~p"/avisos"} class="btn btn--blob btn--block">Quero ser avisade</a>
+    <a :if={@has_merch?} href={~p"/loja"} class="btn btn--primary btn--block btn--blob">
+      Garantir produto
+    </a>
+    <a
+      href={~p"/avisos"}
+      class={["btn btn--block", if(@has_merch?, do: "btn--ghost", else: "btn--blob")]}
+    >
+      Quero ser avisade
+    </a>
     <a
       href="https://www.instagram.com/coletivo.sesh/"
       target="_blank"

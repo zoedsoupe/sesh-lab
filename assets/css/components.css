@@ -525,7 +525,8 @@ body:has(.sesh-logo--hero) .brand {
   color: var(--fg-muted);
   font-size: var(--text-xs);
   letter-spacing: 0.03em;
-  text-transform: lowercase;
+  /* sentence-case: trust the label text as written (pt-br), no forced casing */
+  text-transform: none;
 }
 
 .field-error {
@@ -703,6 +704,81 @@ select.input {
 .stepper-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+/* loja: cards mais discretos que o qty-row (sem borda de accent, tipo menor) */
+.store-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.store-card {
+  display: flex;
+  align-items: stretch;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* photo fills card height (inside the padding), fixed width, cropped to fit.
+   wrapper is the flex child so it stretches; the img fills the wrapper. */
+.store-card-photo {
+  width: 4.5rem;
+  align-self: stretch;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+
+.store-card-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* stepper hugs its content instead of stretching the card width (no blank gap).
+   parent is a margin-stack, not flex, so size the stepper itself. */
+.store-card .stepper {
+  width: fit-content;
+}
+
+/* no-photo: same column so cards line up; initial as a quiet placeholder */
+.store-card-photo--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  text-transform: uppercase;
+}
+
+.store-card-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* barra fixa de finalizar, flutua no rodapé enquanto a página rola */
+.store-finish-bar {
+  position: sticky;
+  bottom: 0;
+  padding-top: var(--s-3);
+  padding-bottom: var(--s-3);
+  background: var(--bg);
+}
+
+/* imagem do produto no formulário /comprar (merch_row) */
+.qty-row-img {
+  width: 3rem;
+  height: 3rem;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  flex: 0 0 auto;
 }
 
 /* badges */

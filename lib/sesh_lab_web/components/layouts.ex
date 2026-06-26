@@ -17,6 +17,7 @@ defmodule SeshLabWeb.Layouts do
           <.sesh_logo />
         </a>
         <nav class="site-nav row gap-3 align-center">
+          <a href={~p"/loja"}>Loja</a>
           <a href={~p"/meus-ingressos"}>Ingressos</a>
           <a href={~p"/sobre"}>Sobre</a>
           <a href={~p"/avisos"}>Avisos</a>

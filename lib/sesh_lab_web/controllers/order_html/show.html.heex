@@ -4,14 +4,16 @@
 
   <section class="stack-5">
     <header class="stack-1">
-      <h1 class="text-xl text-mono">Pedido — {@edition.name}</h1>
+      <h1 class="text-xl text-mono">
+        Pedido{if @edition, do: " — #{@edition.name}"}
+      </h1>
       <.status_badge status={@order.status} />
       <p class="text-xs text-dim">{status_message(@order.status)}</p>
     </header>
 
     <ul class="stack-2">
       <li :for={item <- @order.items} class="row space-between text-sm">
-        <span>{item.quantity}× {item.ticket_type_name_snapshot}</span>
+        <span>{item.quantity}× {SeshLab.Tickets.OrderItem.line_name(item)}</span>
         <span class="text-mono">{money(item.unit_price_cents * item.quantity)}</span>
       </li>
     </ul>
@@ -41,6 +43,22 @@
             {Phoenix.HTML.raw(ticket_qr(ticket))}
           </div>
           <span class="text-mono text-lg">{ticket_display_code(ticket)}</span>
+        </li>
+      </ul>
+    </section>
+
+    <section :if={@order.status == :confirmed and @order.merch_units != []} class="stack-3">
+      <h2 class="text-sm text-muted">Seus produtos ({length(@order.merch_units)})</h2>
+      <p class="text-xs text-dim">
+        Mostre o QR no balcão pra retirar. Cada código retira uma vez.
+      </p>
+      <ul class="stack-3">
+        <li :for={unit <- @order.merch_units} class="ticket-card stack-2">
+          <div class="qr-frame" aria-label="qr code do produto">
+            {Phoenix.HTML.raw(merch_qr(unit))}
+          </div>
+          <span class="text-base">{unit.merch_item_name_snapshot}</span>
+          <span class="text-mono text-lg">{merch_display_code(unit)}</span>
         </li>
       </ul>
     </section>

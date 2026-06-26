@@ -313,6 +313,8 @@ defmodule SeshLab.TicketsTest do
       # Pending no longer subtracts from available — only confirmed does.
       assert stats.available == 8
       assert stats.validated == 1
+      # Revenue = confirmed orders only; the pending order must not count.
+      assert stats.revenue_cents == confirmed.total_cents
     end
   end
 
