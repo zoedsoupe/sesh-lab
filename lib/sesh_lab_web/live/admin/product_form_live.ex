@@ -126,6 +126,12 @@ defmodule SeshLabWeb.Admin.ProductFormLive do
           multipart
         >
           <.input field={@form[:name]} label="Nome" required />
+          <.input
+            field={@form[:kind]}
+            type="select"
+            label="Tipo"
+            options={[{"Loja (online)", :online}, {"Balcão (festa)", :counter}]}
+          />
           <.input field={@form[:description]} type="textarea" label="Descrição" rows="2" />
           <div class="row gap-3">
             <.input
@@ -135,15 +141,13 @@ defmodule SeshLabWeb.Admin.ProductFormLive do
               required
               inputmode="numeric"
             />
-            <.input
-              field={@form[:stock]}
-              type="number"
-              label="Estoque total"
-              required
-              inputmode="numeric"
-            />
+            <.input field={@form[:stock]} type="number" label="Estoque total" inputmode="numeric" />
             <.input field={@form[:position]} type="number" label="Ordem" inputmode="numeric" />
           </div>
+          <.input field={@form[:track_stock]} type="checkbox" label="Controlar estoque" />
+          <p class="text-xs text-dim">
+            Balcão sem controle de estoque vende livre (deixe desmarcado). Loja sempre controla.
+          </p>
           <p :if={@live_action == :edit} class="text-xs text-dim">
             Disponível agora: {@item.available}. Mudar o estoque ajusta o disponível pelo mesmo delta.
           </p>

@@ -1,7 +1,7 @@
 defmodule SeshLabWeb.Admin.DashboardLive do
   use SeshLabWeb, :live_view
 
-  alias SeshLab.{Clock, Editions, Tickets}
+  alias SeshLab.{Bar, Clock, Editions, Tickets}
   alias SeshLab.Editions.Edition
 
   @topic "admin:orders"
@@ -39,6 +39,7 @@ defmodule SeshLabWeb.Admin.DashboardLive do
     assign(socket,
       edition: nil,
       stats: nil,
+      bar: nil,
       by_type: %{},
       pending: [],
       recent: [],
@@ -63,6 +64,7 @@ defmodule SeshLabWeb.Admin.DashboardLive do
       editions: editions,
       edition: edition,
       stats: Tickets.stats(edition.id),
+      bar: Bar.stats(edition.id),
       by_type: Tickets.stats_by_type(edition.id),
       pending: edition_orders(Tickets.list_pending(), edition.id),
       recent: edition_orders(Tickets.list_recent(20), edition.id)
@@ -155,6 +157,23 @@ defmodule SeshLabWeb.Admin.DashboardLive do
                 <.stat label="Disponível" value={@stats.available} />
                 <.stat label="Validados" value={@stats.validated} />
               </div>
+            </section>
+
+            <section :if={@bar && @bar.count > 0} class="stack-3">
+              <div class="row space-between align-baseline">
+                <h2 class="text-sm text-muted">Balcão ({@bar.count} vendas)</h2>
+                <span class="text-mono text-xl text-accent">{money(@bar.total_cents)}</span>
+              </div>
+              <div class="stats-grid">
+                <.stat label="Dinheiro" value={money(@bar.cash_cents)} />
+                <.stat label="PIX" value={money(@bar.pix_cents)} />
+              </div>
+              <ul :if={@bar.top_items != []} class="stack-1">
+                <li :for={t <- @bar.top_items} class="row space-between text-xs text-dim">
+                  <span>{t.qty}× {t.name}</span>
+                  <span class="text-mono">{money(t.cents)}</span>
+                </li>
+              </ul>
             </section>
 
             <section class="stack-3">

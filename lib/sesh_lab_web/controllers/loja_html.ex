@@ -25,7 +25,7 @@ defmodule SeshLabWeb.LojaHTML do
       <div :if={!item.image_path} class="store-card-photo store-card-photo--empty" aria-hidden="true">
         {String.first(item.name)}
       </div>
-      <div class="store-card-body stack-1">
+      <div class="store-card-body stack-2">
         <div class="row space-between align-baseline">
           <span class="text-base">{item.name}</span>
           <span class="text-xs text-dim text-mono">{money(item.price_cents)}</span>

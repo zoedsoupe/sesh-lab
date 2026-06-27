@@ -713,54 +713,53 @@ select.input {
   padding: 0;
 }
 
+/* stacked card: full-width photo on top, then name/desc/stepper in the body */
 .store-card {
   display: flex;
-  align-items: stretch;
-  gap: var(--s-3);
-  padding: var(--s-3);
+  flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  overflow: hidden;
 }
 
-/* photo fills card height (inside the padding), fixed width, cropped to fit.
-   wrapper is the flex child so it stretches; the img fills the wrapper. */
+/* photo spans the full card width; natural height (whole image, no crop) */
 .store-card-photo {
-  width: 4.5rem;
-  align-self: stretch;
-  flex: 0 0 auto;
-  overflow: hidden;
-  border-radius: var(--radius-sm);
+  display: block;
+  width: 100%;
 }
 
 .store-card-photo img {
   display: block;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
 }
 
-/* stepper hugs its content instead of stretching the card width (no blank gap).
-   parent is a margin-stack, not flex, so size the stepper itself. */
+/* stepper spans the card; the input flexes to fill between the −/+ buttons. */
 .store-card .stepper {
-  width: fit-content;
+  width: 100%;
 }
 
-/* no-photo: same column so cards line up; initial as a quiet placeholder */
+.store-card .stepper-input {
+  flex: 1;
+  width: auto;
+}
+
+/* no-photo: full-width band with the initial */
 .store-card-photo--empty {
   display: flex;
   align-items: center;
   justify-content: center;
+  aspect-ratio: 16 / 9;
   background: var(--surface-2);
   color: var(--fg-muted);
   font-family: var(--font-mono);
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   text-transform: uppercase;
 }
 
 .store-card-body {
-  flex: 1 1 auto;
-  min-width: 0;
+  padding: var(--s-3);
 }
 
 /* barra fixa de finalizar, flutua no rodapé enquanto a página rola */
@@ -861,6 +860,100 @@ select.input {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   word-break: break-all;
+}
+
+/* ── Balcão POS ─────────────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: var(--s-2);
+}
+
+.tab {
+  flex: 1;
+  padding: var(--s-2) var(--s-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--fg-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.tab--active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pos-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: var(--s-2);
+}
+
+/* uniform tiles: equal width (1fr) + a height floor so a card with a stock
+   line matches one without. */
+.pos-item {
+  display: flex;
+  flex-direction: column;
+  min-height: 5.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.pos-item-tap {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s-3);
+  background: none;
+  border: none;
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pos-item-tap:hover {
+  background: var(--surface-2);
+}
+
+.pos-item-name {
+  font-size: var(--text-base);
+}
+
+.pos-item-qty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+}
+
+/* bottom action sheet (PIX no balcão) */
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.sheet-body {
+  width: 100%;
+  max-width: 30rem;
+  padding: var(--s-4);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
 }
 
 /* totals */

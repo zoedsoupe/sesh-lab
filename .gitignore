@@ -46,3 +46,4 @@ npm-debug.log
 # Uploaded user content (lives on Fly volume in prod)
 /priv/static/uploads/
 /.claude/
+pix.svg

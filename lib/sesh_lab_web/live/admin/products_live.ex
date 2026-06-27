@@ -34,8 +34,11 @@ defmodule SeshLabWeb.Admin.ProductsLive do
               <span class="text-mono text-sm">{money(item.price_cents)}</span>
             </a>
             <div class="row space-between text-xs text-dim">
-              <span class="text-mono">disp {item.available} / {item.stock}</span>
-              <span class="chip">{if item.is_active, do: "ativo", else: "inativo"}</span>
+              <span class="text-mono">{stock_label(item)}</span>
+              <span class="row gap-2">
+                <span class="chip">{if item.kind == :counter, do: "balcão", else: "loja"}</span>
+                <span class="chip">{if item.is_active, do: "ativo", else: "inativo"}</span>
+              </span>
             </div>
             <button
               type="button"
@@ -51,4 +54,7 @@ defmodule SeshLabWeb.Admin.ProductsLive do
     </Layouts.admin>
     """
   end
+
+  defp stock_label(%{track_stock: false}), do: "estoque livre"
+  defp stock_label(item), do: "disp #{item.available} / #{item.stock}"
 end

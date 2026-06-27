@@ -26,11 +26,29 @@ defmodule SeshLab.Merch do
     |> Repo.all()
   end
 
+  @doc "Itens vendidos online em /loja (ativos), ordenados por position."
   @spec list_active_items() :: [Item.t()]
   def list_active_items do
     Item
-    |> where([m], m.is_active)
+    |> where([m], m.is_active and m.kind == :online)
     |> order_by([m], asc: m.position, asc: m.inserted_at)
+    |> Repo.all()
+  end
+
+  @doc "Itens vendidos no balcão da festa (ativos), ordenados por position."
+  @spec list_counter_items() :: [Item.t()]
+  def list_counter_items do
+    Item
+    |> where([m], m.is_active and m.kind == :counter)
+    |> order_by([m], asc: m.position, asc: m.inserted_at)
+    |> Repo.all()
+  end
+
+  @doc "Itens de balcão ativos por id (pra montar a venda no POS)."
+  @spec get_counter_items([Ecto.UUID.t()]) :: [Item.t()]
+  def get_counter_items(ids) do
+    Item
+    |> where([m], m.is_active and m.kind == :counter and m.id in ^ids)
     |> Repo.all()
   end
 

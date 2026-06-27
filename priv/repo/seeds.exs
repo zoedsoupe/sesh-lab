@@ -115,7 +115,19 @@ end
     stock: 30,
     position: 3,
     is_active: false
-  }
+  },
+  # Balcão (POS da festa). Água/cerveja rastreiam estoque; cigarro/pirulito não.
+  %{name: "Água", price_cents: 500, kind: :counter, track_stock: true, stock: 60, position: 0},
+  %{
+    name: "Cerveja",
+    price_cents: 1000,
+    kind: :counter,
+    track_stock: true,
+    stock: 120,
+    position: 1
+  },
+  %{name: "Cigarro", price_cents: 200, kind: :counter, track_stock: false, position: 2},
+  %{name: "Pirulito", price_cents: 300, kind: :counter, track_stock: false, position: 3}
 ]
 |> Enum.each(merch_upsert)
 
