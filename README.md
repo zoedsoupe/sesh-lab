@@ -52,10 +52,6 @@ mix phx.server
 - Público: http://localhost:4000
 - Admin: http://localhost:4000/admin (basic auth via `.env`)
 
-## Spec
-
-`SPEC_SESH_LAB.md` tem arquitetura, schemas, fluxos e roadmap por fase.
-
 ## Deploy
 
 Fly.io, máquina única com volume pra SQLite (`fly.toml`). Migrações rodam no boot
