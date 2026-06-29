@@ -62,6 +62,22 @@ defmodule SeshLabWeb.Admin.ProductFormLive do
     {:noreply, socket |> put_flash(:info, "Imagem removida.") |> assign_form(item)}
   end
 
+  def handle_event("delete", _params, socket) do
+    case Merch.delete_item(socket.assigns.item) do
+      {:ok, _item} ->
+        {:noreply,
+         socket |> put_flash(:info, "Produto excluído.") |> push_navigate(to: ~p"/admin/produtos")}
+
+      {:error, :referenced} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           "Produto já tem vendas: não dá pra excluir, só desativar."
+         )}
+    end
+  end
+
   defp assign_item(socket, _params, :new), do: assign_form(socket, %Item{})
 
   defp assign_item(socket, %{"id" => id}, :edit) do
@@ -202,6 +218,17 @@ defmodule SeshLabWeb.Admin.ProductFormLive do
             {if @live_action == :new, do: "Criar produto", else: "Salvar"}
           </.button>
         </.form>
+
+        <.button
+          :if={@live_action == :edit}
+          type="button"
+          phx-click="delete"
+          data-confirm="Excluir este produto? Não dá pra desfazer. (Produtos já vendidos não podem ser excluídos.)"
+          variant={:danger}
+          class="btn--block"
+        >
+          Excluir produto
+        </.button>
       </section>
     </Layouts.admin>
     """

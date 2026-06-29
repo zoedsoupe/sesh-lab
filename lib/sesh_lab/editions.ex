@@ -11,6 +11,7 @@ defmodule SeshLab.Editions do
 
   alias SeshLab.{Clock, Repo}
   alias SeshLab.Editions.{Edition, EditionMerchItem, TicketType}
+  alias SeshLab.Tickets.{OrderItem, Ticket}
 
   # ── Queries ─────────────────────────────────────────────────────────────────
 
@@ -61,10 +62,41 @@ defmodule SeshLab.Editions do
   end
 
   def update_edition(%Edition{} = edition, attrs) do
-    edition
-    |> Repo.preload(:ticket_types)
-    |> Edition.changeset(attrs)
-    |> Repo.update()
+    changeset =
+      edition
+      |> Repo.preload(:ticket_types)
+      |> Edition.changeset(attrs)
+
+    # Lotes com venda têm FK :restrict (pedidos/ingressos): apagar quebraria
+    # histórico. Bloqueia a remoção e manda desativar em vez de excluir.
+    case blocked_lote_deletions(changeset) do
+      [] ->
+        Repo.update(changeset)
+
+      names ->
+        changeset =
+          Ecto.Changeset.add_error(
+            changeset,
+            :ticket_types,
+            "lote(s) com venda não podem ser removidos, só desativados: #{Enum.join(names, ", ")}"
+          )
+
+        {:error, %{changeset | action: :update}}
+    end
+  end
+
+  defp blocked_lote_deletions(changeset) do
+    changeset
+    |> Ecto.Changeset.get_change(:ticket_types, [])
+    |> Enum.filter(&(&1.action in [:replace, :delete] and ticket_type_referenced?(&1.data.id)))
+    |> Enum.map(& &1.data.name)
+  end
+
+  defp ticket_type_referenced?(nil), do: false
+
+  defp ticket_type_referenced?(id) do
+    Repo.exists?(from o in OrderItem, where: o.ticket_type_id == ^id) or
+      Repo.exists?(from t in Ticket, where: t.ticket_type_id == ^id)
   end
 
   @doc """

@@ -24,7 +24,7 @@ defmodule SeshLab.Editions.Edition do
     field :accent_color, :string, default: "#F07BC0"
     field :logo_path, :string
 
-    has_many :ticket_types, TicketType, preload_order: [asc: :position]
+    has_many :ticket_types, TicketType, preload_order: [asc: :position], on_replace: :delete
 
     timestamps()
   end

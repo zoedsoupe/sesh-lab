@@ -56,7 +56,7 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
       {:error, changeset} ->
         {:noreply,
          socket
-         |> put_flash(:error, "Confira os campos abaixo.")
+         |> put_flash(:error, error_flash(changeset))
          |> assign(form: to_form(changeset))}
     end
   end
@@ -189,6 +189,13 @@ defmodule SeshLabWeb.Admin.EditionFormLive do
   defp upload_error_message(other), do: to_string(other)
 
   defp accent(form), do: form[:accent_color].value || "#F07BC0"
+
+  defp error_flash(changeset) do
+    case changeset.errors[:ticket_types] do
+      {msg, _} -> msg
+      _ -> "Confira os campos abaixo."
+    end
+  end
 
   # ── render ──────────────────────────────────────────────────────────────────
 

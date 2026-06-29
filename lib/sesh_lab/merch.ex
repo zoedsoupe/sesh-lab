@@ -97,6 +97,26 @@ defmodule SeshLab.Merch do
     update_item(item, %{is_active: not item.is_active})
   end
 
+  @doc """
+  Apaga um produto. Recusa se já tem venda/unidade ligada (FKs são `:restrict`):
+  histórico de pedido não pode sumir. Nesse caso desative em vez de excluir.
+  """
+  @spec delete_item(Item.t()) :: {:ok, Item.t()} | {:error, :referenced}
+  def delete_item(%Item{} = item) do
+    if item_referenced?(item.id) do
+      {:error, :referenced}
+    else
+      {:ok, _} = Repo.delete(item)
+      {:ok, item}
+    end
+  end
+
+  defp item_referenced?(id) do
+    Repo.exists?(from o in OrderItem, where: o.merch_item_id == ^id) or
+      Repo.exists?(from u in Unit, where: u.merch_item_id == ^id) or
+      Repo.exists?(from b in "bar_sale_items", where: b.merch_item_id == ^id)
+  end
+
   # ── Emissao das unidades ────────────────────────────────────────────────────
 
   @spec mint_units(Order.t(), [OrderItem.t()], (-> String.t())) :: :ok

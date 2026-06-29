@@ -1,4 +1,4 @@
 #!/bin/sh
 set -eu
 cd -P -- "$(dirname -- "$0")"
-./sesh_lab eval "SeshLab.Release.seed" && PHX_SERVER=true exec ./sesh_lab start
+PHX_SERVER=true exec ./sesh_lab start
